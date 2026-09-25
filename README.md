@@ -171,15 +171,7 @@ cd Job-Bot
 
 ### 2. Install the Python dependencies
 
-```bash
-pip install -r requirements.txt
-```
-
 ### 3. Install Playwright
-
-```bash
-playwright install
-```
 
 ### 4. Add your CV
 
@@ -202,7 +194,6 @@ The script will ask for:
 
 The browser then opens and starts processing the job searches.
 
-> **Important:** Do not put your API keys, Google App Password, or other private credentials directly into the repository.
 
 ## A little more about the project
 
