@@ -20,26 +20,26 @@ DIRECTORY = Path(__file__).resolve().parent
 
 SEARCH_QUERIES = [
     # Kitchen & Restaurant
-    "tiskari", "astianpesijä", "keittiöapulainen", "salityöntekijä", 
+    "tiskari", "astianpesijä", "keittiöapulainen", "salityöntekijä",
     "blokkari", "ravintolatyöntekijä", "apukokki", "kahvilatyöntekijä", "pikaruokatyöntekijä",
     "dishwasher", "kitchen helper", "kitchen hand", "restaurant worker", "cafe worker",
-    
+
     # Cleaning & Sanitation
     "siivooja", "porrussiivooja", "toimistosiivooja", "rakennussiivooja", "toimitilahuoltaja", "siivousapulainen",
     "cleaner", "housekeeper", "janitor",
-    
+
     # Logistics, Warehouse & Packing
     "varastotyöntekijä", "hyllyttäjä", "keräilijä", "pakkaaja", "lajittelija", "terminaalityöntekijä", "varastoapulainen",
     "warehouse worker", "packer", "order picker", "sorter",
-    
+
     # Manufacturing, Construction & General Labor
     "tuotantotyöntekijä", "aputyöntekijä", "rakennusapulainen", "raksa-apulainen", "apumies", "purkutyöntekijä", "kokoaja", "hanttimies",
     "production worker", "construction helper", "general labor", "assembly worker",
-    
+
     # Ship & Port Workers
     "laivatyöntekijä", "laivasiivooja", "kansimies", "satamatyöntekijä",
     "ship worker", "deckhand", "port worker", "ferry worker",
-    
+
     # General Entry Level, Delivery & Seasonal
     "jakelija", "postinjakaja", "muuttomies", "rengasasentaja", "autonpesijä", "pesulatyöntekijä", "tapahtumatyöntekijä", "ulkoaluetyöntekijä", "lumityöntekijä",
     "delivery driver", "mover", "car washer", "event worker", "snow clearer"
@@ -138,63 +138,63 @@ def evaluate(job, profile):
 TEMPLATES = {
     "warehouse": (
         r"varasto|keräilij|pakkaaj|lajittelij|terminaali|warehouse|order pick|pack|sorter",
-        "A busy warehouse needs people who can keep the pace without passing mistakes down the line. I’d learn your checks, keep my area in order, and make sure the next person has what they need to keep moving.",
-        "Kiireisessä varastossa on tärkeää pitää työtahti tasaisena ja ehkäistä virheet ennen seuraavaa työvaihetta. Opettelisin tarkistuksenne, pitäisin oman työalueeni järjestyksessä ja huolehtisin, että seuraava työntekijä pääsee jatkamaan sujuvasti.",
+        "I’m comfortable with physical work and a busy pace. I learn new routines quickly and can adapt when the team needs me to switch between picking, packing, and keeping the work area organised.",
+        "Olen tottunut fyysiseen työhön ja reippaaseen työtahtiin. Opin uudet rutiinit nopeasti ja siirryn joustavasti keräilyn, pakkaamisen ja työalueen järjestämisen välillä.",
     ),
     "cleaning": (
         r"siivoo|siivous|toimitilahuol|clean|housekeep|janitor",
-        "What appeals to me is keeping your sites clean and ready for the people who use them. I’d follow the site’s cleaning plan, check the work before leaving, and give high-use areas the attention they need.",
-        "Minua motivoi se, että tilat jäävät siisteiksi ja käyttövalmiiksi. Noudattaisin kohteen siivoussuunnitelmaa, tarkistaisin työn jäljen ennen lähtöä ja kiinnittäisin erityistä huomiota paljon käytettyihin tiloihin.",
+        "I work carefully and can adapt to different cleaning sites and schedules. I’d learn your routines, keep track of what has been done, and check the result before moving on.",
+        "Teen työni huolellisesti ja sopeudun erilaisiin siivouskohteisiin ja työaikoihin. Opettelisin kohteen rutiinit, seuraisin tehtävien etenemistä ja tarkistaisin työn jäljen ennen siirtymistä seuraavaan kohteeseen.",
     ),
     "food_service": (
         r"ravintola|keittiö|astia|tiskari|kokki|kahvila|blokkari|ruoka|food|kitchen|restaurant|dishwash|cafe",
-        "In a busy restaurant, I’d look for what the team needs next: a clean station, equipment ready to use, or a colleague who could use another pair of hands. I’d learn how you run a shift and make myself useful from the start.",
-        "Kiireisessä ravintolassa katson, mitä tiimi tarvitsee seuraavaksi: puhtaan työpisteen, käyttövalmiit välineet tai apua toiselle työntekijälle. Opettelisin vuoronne työtavat ja tarttuisin töihin alusta asti.",
+        "I’m comfortable working at a busy pace and switching between tasks as needed. In a restaurant, I’d help keep prep moving, make sure clean dishes and equipment are ready, and support the team during a rush.",
+        "Olen tottunut reippaaseen työtahtiin ja vaihdan tehtävästä toiseen tarpeen mukaan. Ravintolassa auttaisin esivalmisteluissa, huolehtisin puhtaiden astioiden ja välineiden saatavuudesta ja tukisin tiimiä ruuhkassa.",
     ),
     "production": (
         r"tuotanto|kokoaja|assembly|production|manufactur",
-        "I understand how much the rest of the line depends on one person doing their part properly. I’d learn the checks for my station, work at a dependable pace, and raise problems early so the team can deal with them.",
-        "Ymmärrän, miten paljon muu tuotantolinja riippuu siitä, että jokainen hoitaa oman työvaiheensa kunnolla. Opettelisin työpisteeni tarkistukset, pitäisin tasaisen työtahdin ja ilmoittaisin poikkeamista ajoissa.",
+        "I’m comfortable with practical work that calls for a steady pace and attention to detail. I’d learn the routine at my station, follow the checks, and flag any issue that could hold up the next stage.",
+        "Minulle sopii käytännön työ, jossa tarvitaan tasaista työtahtia ja tarkkuutta. Opettelisin työpisteeni rutiinit, tekisin sovitut tarkistukset ja kertoisin ajoissa ongelmista, jotka voivat hidastaa seuraavaa työvaihetta.",
     ),
     "site_work": (
         r"rakennus|raksa|purku|apumies|aputyö|construction|labour|labor",
-        "A crew works better when people notice what needs doing and communicate before moving on. I’d stay attentive to instructions, keep tools and materials where they’re needed, and leave the work area ready for the next task.",
-        "Työryhmä toimii paremmin, kun työntekijät huomaavat, mitä pitää tehdä, ja kertovat toisilleen työn etenemisestä. Kuuntelisin ohjeet, pitäisin työkalut ja materiaalit saatavilla ja jättäisin työalueen valmiiksi seuraavaa tehtävää varten.",
+        "I’m comfortable with physical work and adapting to the tasks a crew needs done that day. I follow instructions carefully and would keep tools, materials, and the work area ready for the next task.",
+        "Olen tottunut fyysiseen työhön ja sopeudun työryhmän päivän tehtäviin. Noudatan ohjeita huolellisesti ja pitäisin työvälineet, materiaalit ja työalueen valmiina seuraavaa tehtävää varten.",
     ),
     "retail_stock": (
         r"hyllyttäj|stock replen|shelf stack",
-        "I’d keep products easy to find for customers and stock easy to locate for colleagues. In a busy shift I’d learn what needs replenishing first and finish each area properly before moving on.",
-        "Huolehtisin, että asiakkaat löytävät tuotteet hyllystä ja kollegat varastosta. Kiireisessä vuorossa opettelisin, mitä kannattaa täydentää ensin, ja viimeistelisin oman alueeni ennen seuraavaan tehtävään siirtymistä.",
+        "I can adapt when priorities change on a busy shop floor. I’d keep stock organised, refill what’s needed first, and leave the shelves easy for customers to shop from.",
+        "Sopeudun muuttuviin tehtäviin myös kiireisessä myymälässä. Pitäisin varaston järjestyksessä, täydentäisin tarvittavat tuotteet ensin ja huolehtisin hyllyjen selkeydestä.",
     ),
     "port": (
         r"satama|laivatyö|kansimies|deckhand|port worker|ferry worker|ship worker",
-        "I would take your site and equipment procedures seriously from the first shift. My aim would be to do physical work steadily, communicate clearly around shared equipment, and be a person the crew can rely on.",
-        "Ottaisin työpaikan ja laitteiden turvallisuusohjeet vakavasti ensimmäisestä vuorosta lähtien. Tekisin fyysistä työtä tasaisella tahdilla, pitäisin yhteyttä muihin yhteisten laitteiden äärellä ja hoitaisin oman osuuteni luotettavasti.",
+        "I’m comfortable with physical work and working alongside others around shared equipment. I’d learn your safety routines and communicate clearly so the crew can work together smoothly.",
+        "Olen tottunut fyysiseen työhön ja yhteistyöhön yhteisten työvälineiden äärellä. Opettelisin turvallisuuskäytäntönne ja pitäisin yhteyttä muihin, jotta työ sujuu turvallisesti.",
     ),
     "moving": (
         r"muuttomies|mover",
-        "People remember how their belongings were treated on moving day. I would work steadily, coordinate lifts with the crew, and give the last box the same care as the first.",
-        "Asiakkaalle jää mieleen, miten hänen tavaroitaan käsiteltiin muuttopäivänä. Tekisin työtä tasaisesti, sopisin nostoista työryhmän kanssa ja käsittelisin viimeisenkin laatikon yhtä huolellisesti kuin ensimmäisen.",
+        "I’m comfortable with physical work and working at a steady pace. I’d coordinate lifting with the team, adapt to each site, and handle customers’ belongings carefully throughout the move.",
+        "Olen tottunut fyysiseen työhön ja tasaiseen työtahtiin. Sopisin nostoista tiimin kanssa, sopeutuisin eri kohteisiin ja käsittelisin asiakkaiden tavaroita huolellisesti koko muuton ajan.",
     ),
     "events": (
         r"tapahtumatyöntekijä|event worker",
-        "I’d pay attention to what makes an event run smoothly for both guests and colleagues. That means finishing setup properly, stepping in when something changes, and giving the next shift a clear handover.",
-        "Kiinnittäisin huomiota siihen, mikä tekee tapahtumasta sujuvan vieraille ja kollegoille. Valmistelisin oman osuuteni huolellisesti, auttaisin tilanteen muuttuessa ja kertoisin seuraavalle vuorolle, mitä on vielä tehtävä.",
+        "I enjoy practical work where things can change quickly. I can switch between setup, helping guests, and supporting colleagues, while making sure the tasks I take on are finished.",
+        "Pidän käytännön työstä, jossa tilanteet voivat muuttua nopeasti. Siirryn joustavasti valmisteluista vieraiden auttamiseen ja kollegoiden tukemiseen ja huolehdin, että ottamani tehtävät tulevat valmiiksi.",
     ),
     "outdoor": (
         r"ulkoalue|lumityöntekijä|snow clear",
-        "I’m comfortable with work where the conditions change but the job still needs doing. I’d come prepared, follow your priorities for the day, and leave the area in a condition the next crew can work with.",
-        "Minulle sopii työ, jossa olosuhteet vaihtuvat mutta tehtävät on silti hoidettava. Tulisinkin töihin varautuneena, noudattaisin päivän tärkeysjärjestystä ja jättäisin alueen seuraavalle työryhmälle hyvään kuntoon.",
+        "I’m comfortable doing physical work outdoors and adapting when the weather or the day’s priorities change. I’d keep a steady pace and finish the areas assigned to me properly.",
+        "Minulle sopii fyysinen ulkotyö, ja sopeudun sään sekä päivän tehtävien vaihteluun. Pitäisin tasaisen työtahdin ja hoitaisin minulle osoitetut alueet huolellisesti loppuun.",
     ),
     "vehicle_care": (
         r"rengasasentaja|autonpesijä|car washer",
-        "I’d take the time to learn your tools and quality checks, then work efficiently without rushing the finish. I want the person receiving the vehicle to see that someone took care with the work.",
-        "Opettelisin työvälineenne ja laatutarkistuksenne, jotta voisin työskennellä tehokkaasti ja viimeistellä työn huolellisesti. Minulle on tärkeää, että työn jälki näkyy myös ajoneuvon vastaanottajalle.",
+        "I’m comfortable with hands-on work and learning the tools and products your team uses. I’d work at a steady pace, keep the work area in order, and check the finish before handing over a vehicle.",
+        "Minulle sopii käytännön työ, ja opin mielelläni tiiminne käyttämät välineet ja tuotteet. Työskentelisin tasaisella tahdilla, pitäisin työpisteen järjestyksessä ja tarkistaisin työn jäljen ennen ajoneuvon luovutusta.",
     ),
     "delivery": (
         r"jakelij|muuttomies|delivery|mover",
-        "People plan their day around a delivery. I’d check that each handover is in order, keep the team informed, and speak up early if a delay or mix-up needs attention.",
-        "Ihmiset suunnittelevat päivänsä toimitusten mukaan. Tarkistaisin, että jokainen luovutus on kunnossa, pitäisin tiimin ajan tasalla ja kertoisin ajoissa, jos viive tai epäselvyys vaatii huomiota.",
+        "I can adapt when the order or pace of deliveries changes. I’d check what is ready, handle the handover carefully, and keep the team informed if a delay needs attention.",
+        "Sopeudun toimitusten järjestyksen ja työtahdin vaihteluun. Tarkistaisin toimitusten valmiuden, huolehtisin luovutuksesta ja ilmoittaisin tiimille ajoissa mahdollisista viiveistä.",
     ),
 }
 
@@ -249,46 +249,58 @@ def draft(job, profile, template="auto", language="auto"):
         raise ValueError("Use the application language requested by the employer.")
     finnish = finnish_required or (language == "fi" and not english_required)
     name = (profile.get("name") or "").strip()
-    role = role_for(job)
-    chosen = role if template == "auto" else template
-    if chosen in TEMPLATES:
-        _, motivation_en, motivation_fi = TEMPLATES[chosen]
-        motivation = motivation_fi if finnish else motivation_en
-    else:
-        motivation = (
-            "Perehtyisin ensin siihen, mitä vuorossa pitää saada valmiiksi. Tarttuisin tarvittaviin tehtäviin, kysyisin ajoissa, jos jokin on epäselvää, ja hoitaisin oman osuuteni loppuun asti."
-            if finnish else
-            "I’d learn what needs to get done first, pitch in where the team needs help, and ask early if something is unclear. I want the people working alongside me to know they can count on me to finish my part."
-        )
-    relevant_passport = profile.get("hygiene_passport") and match(PASSPORT, job.description)
+    role = role_for(job) if template == "auto" else template
+    duties, actions = advertised_duties(job, finnish)
+    ready = profile.get("available_immediately")
     if finnish:
         subject = f"Hakemus – {job.title}"
-        opening = f"Haen ilmoittamaanne tehtävää ({job.title})."
-        passport = "Minulla on suomalainen hygieniapassi."
-        closing_text = "Ansioluetteloni on liitteenä. Keskustelisin mielelläni siitä, miten voisin auttaa tiimiänne."
-        signoff = "Ystävällisin terveisin,"
-        work_ethic = "Olen ahkera työntekijä, joka tulee ajoissa, tarttuu töihin ja pitää tasaisen työtahdin myös kiireessä."
+        greeting, signoff = "Hei,", "Ystävällisin terveisin,"
+        opening = f"Haen ilmoittamaanne tehtävää ({job.title}). Olen ahkera ja luotettava työntekijä, joka pitää käytännön työstä ja tekee tehtävänsä huolellisesti."
+        fit = (TEMPLATES[role][2] if role in TEMPLATES else
+               "Tulen ajoissa, opin uudet työtavat nopeasti ja autan siellä, missä tiimi tarvitsee apua. Olen tottunut fyysiseen työhön ja kiireisiin vuoroihin ja hoidan aloittamani tehtävät huolellisesti loppuun.")
+        if template == "general":
+            opening = f"Haen ilmoittamaanne tehtävää ({job.title}). Etsin työtä, jonka voisin aloittaa pian, ja haluaisin ansaita tiiminne luottamuksen tekemällä työni hyvin ensimmäisestä vuorosta lähtien."
+        elif actions and role not in {"warehouse", "food_service"}:
+            fit += " " + actions[0][0].upper() + actions[0][1:] + "."
+        passport = "Minulla on voimassa oleva suomalainen hygieniapassi."
+        closing = ("Ansioluetteloni on liitteenä. Keskustelisin mielelläni siitä, miten voisin auttaa tiimiänne."
+                   if template != "general" else
+                   "Ansioluetteloni on liitteenä. Arvostaisin mahdollisuutta keskustella siitä, missä voisin olla tiimillenne avuksi.")
     else:
-        subject = f"Application – {job.title}"
-        opening = f"I’d like to apply for the {job.title} position."
-        passport = "I hold a Finnish Hygiene Passport."
-        closing_text = "I’ve attached my CV and would be glad to talk about how I could help your team."
-        signoff = "Kind regards,"
-        work_ethic = "I’m hard-working and dependable. I show up ready, keep going when the shift gets busy, and take care with the work until it’s finished."
-    duties, actions = advertised_duties(job, finnish) if template != "general" else ("", [])
-    detail = (
-        f"Ilmoituksessa huomioni kiinnittyi erityisesti tähän työnkuvaan: {duties}."
-        if finnish else f"What caught my attention in your ad was the emphasis on {duties}."
-    ) if duties else ""
-    if actions:
-        if finnish:
-            motivation = ". ".join(action[0].upper() + action[1:] for action in actions) + "."
-        else:
-            motivation = "On your team, I’d " + " and ".join(actions) + "."
-    first = " ".join(part for part in (opening, detail, work_ethic) if part)
-    second = " ".join(part for part in (motivation, passport if relevant_passport else "", closing_text) if part)
-    signature = f"{signoff}\n{name}" if name else signoff
-    return subject, "\n\n".join(("Hei," if finnish else "Hello,", first, second, signature))
+        subject = f"Application for {job.title}"
+        greeting, signoff = "Hello,", "Best regards,"
+        opening = f"I’m writing to apply for the {job.title} position. I’m a hardworking, reliable person who enjoys practical work and takes pride in doing it properly."
+        fit = (TEMPLATES[role][1] if role in TEMPLATES else
+               "I’m a reliable, hardworking person who shows up on time, learns new routines quickly, and helps where the team needs me. I’m comfortable with physical work and busy shifts, and I stick with a task until it’s done properly.")
+        if template == "general":
+            opening = f"I’m writing to apply for the {job.title} position. I’m looking for an opportunity to get started soon and would welcome the chance to earn your team’s trust by doing a good job from the first shift."
+        elif actions and role not in {"warehouse", "food_service"}:
+            fit += " I’d " + actions[0] + "."
+        passport = "I hold a valid Finnish Hygiene Passport."
+        closing = ("I’ve attached my CV and would be happy to discuss how I could help your team."
+                   if template != "general" else
+                   "I’ve attached my CV. I’d appreciate the chance to speak with you about where I could be useful to your team.")
+    if name:
+        subject += f" – {name}"
+    if template != "general" and duties and role in {"warehouse", "food_service"}:
+        fit += (f" Ilmoituksen mainitsemista tehtävistä minua kiinnostaa erityisesti {duties}." if finnish
+                else f"I’d be glad to help with {duties}, as mentioned in your ad.")
+    personal = [fit]
+    if profile.get("hygiene_passport") and (
+        match(PASSPORT, job.description) or
+        (role_for(job) == "food_service" and match(AD_DUTIES[3][0], job.description))
+    ):
+        personal.append(passport)
+    if profile.get("language_statement"):
+        personal.append("Puhun sujuvasti englantia ja opiskelen suomea."
+                        if finnish else "I speak fluent English and am actively learning Finnish.")
+    if ready:
+        personal.append("Asun Helsingissä ja voin aloittaa heti Helsingissä, Espoossa tai Vantaalla."
+                        if finnish else "I’m based in Helsinki and available to start immediately in Helsinki, Espoo, or Vantaa.")
+    signature = "\n".join(str(value).strip() for value in (
+        signoff, name, profile.get("phone"), profile.get("email"), profile.get("location")
+    ) if value and str(value).strip())
+    return subject, "\n\n".join((greeting, opening, " ".join(personal), closing, signature))
 
 
 

@@ -31,5 +31,10 @@
       "fi": ""
     }
   },
-  "role_cvs": {}
+  "role_cvs": {},
+  "phone": "",
+  "email": "",
+  "location": "",
+  "language_statement": false,
+  "available_immediately": false
 }

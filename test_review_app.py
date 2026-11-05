@@ -44,10 +44,10 @@ class ReviewTests(unittest.TestCase):
         _, finnish = draft(job, {}, "auto", "fi")
         self.assertIn("order picking and packing", tailored)
         self.assertIn("tilausten keräily ja pakkaaminen", finnish)
-        self.assertIn("hard-working", tailored)
-        self.assertIn("finish my part", general)
+        self.assertIn("hardworking, reliable", tailored)
+        self.assertIn("from the first shift", general)
         self.assertNotIn("worked", general)
-        self.assertIn("check items against the order", tailored)
+        self.assertIn("switch between picking, packing", tailored)
         self.assertNotIn("order picking and packing", general)
     def test_changed_listing_never_opens_smtp(self):
         subject, body = draft(self.job, {})
