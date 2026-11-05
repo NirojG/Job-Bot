@@ -1,0 +1,35 @@
+{
+  "name": "",
+  "sender": "",
+  "cv": "cv.pdf",
+  "hygiene_passport": false,
+  "experience_en": "",
+  "experience_fi": "",
+  "role_experience": {
+    "warehouse": {
+      "en": "",
+      "fi": ""
+    },
+    "cleaning": {
+      "en": "",
+      "fi": ""
+    },
+    "food_service": {
+      "en": "",
+      "fi": ""
+    },
+    "production": {
+      "en": "",
+      "fi": ""
+    },
+    "site_work": {
+      "en": "",
+      "fi": ""
+    },
+    "delivery": {
+      "en": "",
+      "fi": ""
+    }
+  },
+  "role_cvs": {}
+}

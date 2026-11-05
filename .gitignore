@@ -1,2 +1,14 @@
-cv.pdf
-send_emails.txt
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+profile.json
+*.pdf
+*.db
+*.db-*
+sent_emails.txt
+listings.local.json
+*.bak
+review_queue.local.json
+review_queue.local.tmp
