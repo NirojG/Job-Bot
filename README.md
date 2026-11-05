@@ -1,30 +1,61 @@
 # Niroj JobFlow
 
-A Windows job-search workspace for Helsinki, Espoo, and Vantaa. The dashboard runs locally and uses Python, SQLite, and Playwright.
+JobFlow is a local Windows dashboard for finding and reviewing practical jobs in Helsinki, Espoo, and Vantaa. It collects public listings, shows their application instructions and published contacts, and prepares English or Finnish email drafts. Email delivery starts after you review and approve the batch.
 
-## Open the dashboard
+## Quick start
 
-- Double-click **Open Niroj JobFlow.cmd** for the live workspace. Keep the launcher window open.
-- Double-click **Preview Niroj JobFlow.cmd** for the sample workspace. The preview server disables email delivery.
-- On a new computer, create a Python virtual environment named `venv`, install `requirements.txt`, and run `python -m playwright install chromium` from that environment.
+Install Python 3.10 or newer. From the repository folder, run these commands in PowerShell.
 
-## Collect and review
+```powershell
+py -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+.\venv\Scripts\python.exe -m playwright install chromium
+Copy-Item profile.example.json profile.json
+```
 
-Use **Collect Jobs** to start a search, or choose automatic collection in **Settings**. When enabled, the running launcher checks every six hours. Bookmarks, the collected queue, and sent history live in SQLite.
+1. Add your name and CV path to the local `profile.json`. If you use the default path, put your PDF in this folder as `cv.pdf`.
+2. Double-click **Preview Niroj JobFlow.cmd** to try the workflow with sample vacancies and email delivery disabled.
+3. Double-click **Open Niroj JobFlow.cmd** for the live dashboard. It opens the browser at `http://127.0.0.1:8765/`. Keep the terminal open.
 
-The dashboard prioritizes vacancies with confirmed English. It keeps Finnish and unconfirmed-language listings available for review. Job Market Finland uses the existing detailed scraper. Duunitori, Jobly, Kuntarekry, Work in Finland, and optional StaffPoint use public search pages where accessible and route applicants to the original listing. Availability varies by source.
+## Collect and review jobs
 
-## Profile, drafts, and email
+- **Collect Jobs** runs one scan. **Scrape Jobs** starts continuous collection with up to five source workers. JobFlow pauses 15 minutes between scans. **Stop** ends the run after the current group finishes.
+- The default sources are Työmarkkinatori, Jobly, Duunitori, Kuntarekry, and Work in Finland. StaffPoint is optional. Coverage varies by source, and the dashboard reports each worker's result.
+- Filter by location, language, category, or published email. **Saved Jobs** keeps bookmarks. A source may return no relevant ads even when the collector runs successfully.
+- Open **Draft Message** to review a role-specific draft or **Email Templates** to browse examples in English and Finnish. The draft uses the vacancy's role and advertised duties.
+- **Desperate Mode** gathers available jobs with published addresses into one review using the general template. Check recipients and uncheck jobs you want to skip before approving.
+- For a portal application, follow the employer's instructions and use **Mark as applied** once you've submitted it. Completed vacancies leave the active queue, and SQLite keeps a completion record to help prevent duplicate applications.
 
-Use **My Profile** to open and reload the private profile. Keep the default CV in `cv`, and optionally add a `role_cvs` map such as `{"warehouse": "warehouse-cv.pdf"}`. A matching role CV takes precedence; otherwise the default CV is used. Use role experience fields only for verified experience. The profile and all CVs remain local.
+## Profile and Gmail
 
-Open **Draft Message** to choose a template and language, then review the selected emails and attachments before approving delivery. Gmail SMTP uses the existing environment setting if available, or the app password entered for that batch. JobFlow rechecks eligible listings and records each outcome. Portal-only listings open in the browser.
+Set these values in your private `profile.json` only if they apply.
 
-Run automated checks using `python -m unittest` from the virtual environment. Development checks use sample data or simulated delivery.
+| Field | Purpose |
+|---|---|
+| `name`, `phone`, `email`, `location` | Signature details. |
+| `cv`, `role_cvs` | Default PDF and optional role-specific PDFs, such as `{"warehouse": "warehouse-cv.pdf"}`. |
+| `hygiene_passport` | A valid Finnish Hygiene Passport. JobFlow includes it when the listing mentions it or a food-service ad clearly describes food preparation. |
+| `language_statement` | Opt in to the statement about fluent English and learning Finnish. |
+| `available_immediately` | Opt in to the statement about starting immediately in Helsinki, Espoo, or Vantaa. |
+| `sender` | Optional Gmail sender address. You can also enter it at batch review. |
 
+For email delivery, enter the Gmail address and its Google app password in the review dialog. The app also supports the local `JOBBOT_SMTP_PASSWORD` environment variable. Keep the password, CVs, profile, database, and sent-email history outside Git. The repository includes a blank example profile.
 
-## Continuous collection
+## Project layout
 
-Click **Start Infinity** to scan the checked sources in parallel. JobFlow runs up to five source workers and starts another scan after a 15-minute pause. Click **Stop** to end continuous collection. In the launcher terminal, type **infinity** or **stop** and press Enter. Keep the launcher open while collecting.
+| File | Responsibility |
+|---|---|
+| `dashboard.py` | Local web server, source scheduling, queue, and approval endpoints. |
+| `dashboard.html`, `dashboard.css`, `dashboard.js` | Dashboard, templates, and batch review. |
+| `send_applications.py` | Työmarkkinatori scraping, listing checks, draft generation, and Gmail SMTP. |
+| `job_sources.py` | Adapters for the other job boards. |
+| `review_app.py` | Batch delivery, listing rechecks, and the earlier desktop review interface. |
+| `test_*.py` | Regression tests with simulated delivery. |
 
-For a listing without a verified application address, **Email this job** shows any addresses found in the published ad. Choose one or enter an address, then review and approve the message. You can review drafts while collection continues.
+## Tests
+
+```powershell
+.\venv\Scripts\python.exe -m unittest discover -v
+```
+
+If a new control appears but the old launcher is still running, stop collection, close the terminal, and reopen the launcher. If collection fails for one source, check the worker status and terminal for its result.
