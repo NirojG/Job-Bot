@@ -8,6 +8,7 @@ import ssl
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from email.message import EmailMessage
 from pathlib import Path
 from urllib.parse import urlencode, urljoin, urlsplit
@@ -72,10 +73,28 @@ class Listing:
     work_languages: list[str]
     application: str
     source: str = ""
+    published_at: int | None = None
 
 
 def match(pattern, value):
     return re.search(pattern, value, re.IGNORECASE) is not None
+
+
+def publication_timestamp(description, source=""):
+    pattern = r"\b(?:julkaistu|published)\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})(?:[ ,]+(?:klo\s+)?(\d{1,2}[:.]\d{2}))?"
+    published = re.search(pattern, description, re.I)
+    if not published and source == "Jobly":
+        published = re.search(r"^\s*(\d{1,2}\.\d{1,2}\.\d{4}),", description, re.M)
+    if not published:
+        return None
+    date_text = published[1]
+    clock = (published[2] if published.lastindex == 2 else None) or "00:00"
+    try:
+        local = datetime.strptime(f"{date_text} {clock.replace('.', ':')}", "%d.%m.%Y %H:%M")
+    except ValueError:
+        return None
+    # Midnight is a conservative lower bound for an ad that gives only a date.
+    return int(local.replace(tzinfo=ZoneInfo("Europe/Helsinki")).timestamp())
 
 
 def listing_deadline(job):

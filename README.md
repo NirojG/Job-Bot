@@ -21,7 +21,7 @@ Copy-Item profile.example.json profile.json
 
 - **Collect Jobs** runs one scan. **Scrape Jobs** starts continuous collection with up to five source workers. JobFlow pauses 15 minutes between scans. **Stop** ends the run after the current group finishes.
 - The default sources are Työmarkkinatori, Jobly, Duunitori, Kuntarekry, and Work in Finland. StaffPoint is optional. Coverage varies by source, and the dashboard reports each worker's result.
-- Filter by location, language, category, or published email. **Saved Jobs** keeps bookmarks. A source may return no relevant ads even when the collector runs successfully.
+- Filter by location, language, category, or published email. **Last 24 hours** shows jobs whose publication date places them in that window and switches to **Newest first**. Listings without a publication date stay in the full queue. **Saved Jobs** keeps bookmarks. A source may return no relevant ads even when the collector runs successfully.
 - Open **Draft Message** to review a role-specific draft or **Email Templates** to browse examples in English and Finnish. The draft uses the vacancy's role and advertised duties.
 - **Desperate Mode** gathers available jobs with published addresses into one review using the general template. Check recipients and uncheck jobs you want to skip before approving.
 - For a portal application, follow the employer's instructions and use **Mark as applied** once you've submitted it. Completed vacancies leave the active queue, and SQLite keeps a completion record to help prevent duplicate applications.

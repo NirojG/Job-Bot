@@ -1,9 +1,23 @@
 import unittest
 
-from send_applications import Listing, draft, evaluate, parse_listing, vacancy_key
+from datetime import datetime, timezone
+
+from send_applications import Listing, draft, evaluate, parse_listing, publication_timestamp, vacancy_key
 
 
 class ApplicationTests(unittest.TestCase):
+    def test_publication_timestamp_uses_helsinki_time(self):
+        utc = datetime(2026, 11, 5, 13, 30, tzinfo=timezone.utc)
+        self.assertEqual(publication_timestamp("Hakuaika päättyy 15.11.2026 (julkaistu 5.11.2026 klo 15.30)"),
+                         utc.timestamp())
+
+    def test_publication_timestamp_uses_only_known_dates(self):
+        midnight = datetime(2026, 11, 4, 22, tzinfo=timezone.utc)
+        self.assertEqual(publication_timestamp("Warehouse worker\n05.11.2026, Employer", "Jobly"),
+                         midnight.timestamp())
+        self.assertIsNone(publication_timestamp("Deadline 5.11.2026"))
+        self.assertIsNone(publication_timestamp("Published 31.02.2026"))
+
     def listing(self, **overrides):
         values = {
             "url": "https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat/example",

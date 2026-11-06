@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from job_sources import SOURCES, discover
 from review_app import CACHE, send_batch
 from send_applications import (
-    published_contacts,
+    published_contacts, publication_timestamp,
     DIRECTORY, ENGLISH, SEARCH_QUERIES, TEMPLATES, Listing, match, canonical_url, draft, evaluate, history_status,
     cv_path, listing_deadline, load_profile, make_message, open_history, parse_listing, role_for, scrape, vacancy_key,
 )
@@ -181,7 +181,8 @@ class Dashboard:
         row = {"category": role_for(job), "contract": contract, "deadline": deadline.strftime("%d.%m.%Y") if deadline else "",
                "id": key, "title": job.title, "url": job.url, "cities": job.municipalities,
                "languages": job.work_languages, "status": decision, "reason": reason, "english": english,
-               "source": external or "Job Market Finland", "contact_count": len(published_contacts(job))}
+               "source": external or "Job Market Finland", "contact_count": len(published_contacts(job)),
+               "published_at": job.published_at or publication_timestamp(job.description, job.source or external or "")}
         payload = json.dumps([asdict(job), self.profile], sort_keys=True, ensure_ascii=False)
         row["version"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         if decision == "portal":

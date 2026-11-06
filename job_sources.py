@@ -3,7 +3,7 @@
 import re
 from urllib.parse import urlencode, urlsplit
 
-from send_applications import CITIES, Listing, SEARCH_QUERIES, parse_listing
+from send_applications import CITIES, Listing, SEARCH_QUERIES, parse_listing, publication_timestamp
 
 SOURCES = {
     "duunitori": ("Duunitori", "https://duunitori.fi/tyopaikat", 'a[href*="/tyopaikat/tyo/"]'),
@@ -118,6 +118,7 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
                     clean = parts._replace(query="", fragment="").geturl()
                     if clean in seen:
                         continue
+                    published_at = publication_timestamp(card, label)
                     if detail:
                         try:
                             response = await detail.goto(clean, wait_until="domcontentloaded", timeout=10000)
@@ -125,6 +126,7 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
                                 main = detail.locator("main").first
                                 content = await main.inner_text(timeout=3500)
                                 parsed = parse_listing(clean, title, content)
+                                published_at = publication_timestamp(content, label) or published_at
                                 if source == "kuntarekry":
                                     heading = main.locator("h1").first
                                     if await heading.count():
@@ -143,7 +145,7 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
                         continue
                     seen.add(clean)
                     yield Listing(clean, title.splitlines()[0], card, cities, [], application or
-                                  f"Apply through the source listing on {label}. Confirm the worksite on the original posting.", label)
+                                  f"Apply through the source listing on {label}. Confirm the worksite on the original posting.", label, published_at)
             report(f"{label} · {len(seen)} local blue-collar matches")
         finally:
             await browser.close()

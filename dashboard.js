@@ -29,12 +29,13 @@ const sampleRows = [
      ["Team player and reliable","Basic Finnish is a plus (not required)","Able to do physical work","Previous warehouse experience is an advantage"]],
     ["food_service","Kitchen Assistant","Ravintola Bistro","Helsinki","Part-time","English + Finnish","Posted 3 days ago","review",
      "Support food preparation, clean the kitchen and help the service team during busy shifts.",["Confirm the required Finnish level","Hygiene Passport requested"]],
-    ["cleaning","Cleaner","Siivouspalvelu Clean & Co","Espoo","Part-time","Finnish helpful","Posted 1 day ago","draft",
+    ["cleaning","Cleaner","Siivouspalvelu Clean & Co","Espoo","Part-time","Finnish helpful","Posted 6 hours ago","draft",
      "Clean offices and shared areas on an evening shift.",["English is accepted","Attention to detail"]],
     ["production","Production Worker","TeknoManufacturing Oy","Vantaa","Full-time","English friendly","Posted 4 days ago","portal",
      "Pack finished products and follow the production line safety procedures.",["Work safely around machinery","Apply through the employer’s portal"]]
 ].map(([category,title,company,city,contract,lang,posted,status,description,requirements],index) => ({
     id:"sample-"+index, category,title,company,cities:[city],contract,lang,posted,status,description,requirements,
+    published_at:Math.floor(Date.now()/1000)-[48,72,6,96][index]*3600,
     english:status!=="review", reason:status==="draft" ? "The worksite is in your target area and English is accepted."
         : status==="portal" ? "This employer takes applications through its online form." : "Confirm the employer’s Finnish requirement.",
     application:status==="draft" ? "The employer accepts applications by email." : "Check the original advertisement for application instructions.",
@@ -159,11 +160,17 @@ function updateStats() {
     $("stop").hidden=state.mode!=="collection" && !infinity;
     $("progress").hidden=state.mode!=="collection";
 }
+const postedDate=new Intl.DateTimeFormat("en-FI",{dateStyle:"medium",timeZone:"Europe/Helsinki"});
+function postedLabel(job) {
+    return job.posted || (job.published_at ? "Posted "+postedDate.format(new Date(job.published_at*1000)) : "");
+}
 function render(preserveDetail=false) {
     const needle=$("query").value.trim().toLowerCase();
     const where=$("location").value, language=$("language").value, category=$("category").value;
     const contract=$("contract").value, status=$("status").value;
+    const now=Date.now()/1000;
     visibleRows=state.rows.filter(job=>
+        (!$("last24").checked || (job.published_at>now-86400 && job.published_at<=now)) &&
         (state.view!=="saved" || state.saved.has(job.id)) &&
         (state.view!=="applications" || ["draft","portal","held","sent"].includes(job.status)) &&
         (!where || (where==="unknown" ? !job.cities.some(Boolean) : job.cities.includes(where))) &&
@@ -171,7 +178,7 @@ function render(preserveDetail=false) {
         (!contract || (job.contract || "Unknown")===contract) && (!status || (status==="email" ? hasEmail(job) : job.status===status)) &&
         (!needle || [job.title,job.company,city(job),categories[job.category]].join(" ").toLowerCase().includes(needle)));
     if($("sort").value==="title") visibleRows.sort((a,b)=>a.title.localeCompare(b.title));
-    else if($("sort").value==="recent") visibleRows.sort((a,b)=>(b.collected || 0)-(a.collected || 0));
+    else if($("sort").value==="recent") visibleRows.sort((a,b)=>(b.published_at || 0)-(a.published_at || 0));
     else if (!sample) visibleRows.sort((a,b)=>Number(b.english)-Number(a.english) || Number(eligible(b))-Number(eligible(a)));
     if (!visibleRows.some(job=>job.id===state.active)) {
         state.active=visibleRows[0]?.id; state.tab="details"; preserveDetail=false;
@@ -192,7 +199,7 @@ function render(preserveDetail=false) {
         const open=button(null,()=>{state.active=job.id;state.tab=eligible(job)?"draft":"details";render();},"job-main");
         const tile=node("span",undefined,"tile"); tile.append(icon(roleIcons[job.category] || "box"));
         const text=node("div"); text.append(node("strong",job.title),node("span",[job.company,city(job)].filter(Boolean).join(" · "),"meta"));
-        if(job.posted) text.append(node("span",job.posted,"meta"));
+        if(postedLabel(job)) text.append(node("span",postedLabel(job),"meta"));
         const chips=node("div",undefined,"chips");
         chips.append(statusChip(job));
         if(categories[job.category]) chips.append(chip(categories[job.category]));
@@ -223,7 +230,7 @@ async function renderDetail() {
     const head=node("div",undefined,"review-head"), tile=node("span",undefined,"tile");tile.append(icon("box"));
     const title=node("div");title.append(node("h2",job.title),node("div",job.company || job.source || "","meta"),
         node("div",city(job),"meta"));
-    if(job.posted) title.append(node("div",job.posted,"meta"));
+    if(postedLabel(job)) title.append(node("div",postedLabel(job),"meta"));
     const badges=node("div",undefined,"badge-area");badges.append(statusChip(job),bookmark(job));head.append(tile,title,badges);
     const tabs=node("div",undefined,"tabs");
     for(const [key,label] of Object.entries({details:"Job Details",application:"Application",draft:"Draft Message"}))
@@ -441,6 +448,12 @@ async function reviewBatch(ids, manualId=null, broad=false) {
 for(const b of document.querySelectorAll("[data-view]")) b.onclick=()=>{state.view=b.dataset.view;state.limit=35;render();};
 for(const b of document.querySelectorAll("[data-close]")) b.onclick=()=>$(b.dataset.close).close();
 for(const id of ["query","location","language","category","sort","status","contract"]) $(id).oninput=()=>{state.limit=35;render();};
+$("last24").onchange=()=>{
+    if($("last24").checked) $("sort").value="recent";
+    state.limit=35;
+    render();
+};
+setInterval(()=>{if($("last24").checked)render(true);},60000);
 $("list-view").onclick=()=>{state.grid=false;render(true);};$("grid-view").onclick=()=>{state.grid=true;render(true);};
 $("show-more").onclick=()=>{state.limit+=35;render(true);};
 $("select-all").onchange=()=>{const value=$("select-all").checked; for(const job of visibleRows) check(job,value);render(true);};
@@ -524,6 +537,7 @@ $("template-use").onclick=guard(async()=>{
 });
 function options(settings){$("options-title").textContent=settings?"Settings":"More Filters";$("collection-options").hidden=!settings;$("filter-options").hidden=settings;$("options").showModal();}
 function clearFilters() {
+    $("last24").checked=false;
     for(const id of ["query","location","category","contract","status"]) $(id).value="";
     $("language").value="priority";
     state.view="discover";
