@@ -4,8 +4,10 @@ import asyncio
 import json
 import os
 import queue
+import random
 import shutil
 import threading
+import time
 import tkinter as tk
 import webbrowser
 from contextlib import closing
@@ -18,6 +20,8 @@ from send_applications import (
 )
 
 CACHE = DIRECTORY / "review_queue.local.json"
+MIN_SEND_DELAY = 30
+MAX_SEND_DELAY = 90
 
 
 async def collect(queries, limit, report):
@@ -35,7 +39,7 @@ async def recheck(selected, report):
     return {job.url: job async for job in scrape([], len(urls), report=report, listing_urls=urls)}
 
 
-def send_batch(selected, profile, password, report, choices=None, manual_urls=()):
+def send_batch(selected, profile, password, report, choices=None, manual_urls=(), progress=None):
     choices = choices or {}
     verified = [item for item in selected if item[0].url not in manual_urls]
     current = asyncio.run(recheck(verified, report)) if verified else {}
@@ -58,15 +62,32 @@ def send_batch(selected, profile, password, report, choices=None, manual_urls=()
 
     if not ready:
         return outcomes
+    sent = 0
+    total = len(ready)
+
+    def update(state, processed, next_at=None):
+        if progress:
+            progress(state=state, total=total, processed=processed, sent=sent, next_at=next_at)
+
+    update("connecting", 0)
     try:
         with smtp_session(profile["sender"], password) as server:
             for index, (job, recipient, message) in enumerate(ready, 1):
-                report(f"Sending {index} of {len(ready)}")
+                update("sending", index - 1)
+                report(f"Sending {index} of {total}")
                 try:
                     outcomes[job.url] = send_reviewed(server, job, recipient, message)
                 except Exception:
                     outcomes[job.url] = "Delivery interrupted. Check Gmail Sent and the queue status."
                     break
+                if outcomes[job.url] == "sent":
+                    sent += 1
+                    if index < total:
+                        delay = random.randint(MIN_SEND_DELAY, MAX_SEND_DELAY)
+                        update("waiting", index, time.time() + delay)
+                        report(f"Sent {sent} of {total}. Next application in {delay} seconds.")
+                        time.sleep(delay)
+                update("sending", index)
     except Exception as error:
         report(f"Email connection closed ({type(error).__name__}). Check batch results.")
     for job, _, _ in ready:

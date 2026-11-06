@@ -15,3 +15,10 @@ dialog{border:1px solid var(--line);border-radius:13px;width:min(560px,94vw);max
 .suggested-item{display:flex;gap:.65rem;align-items:flex-start}.suggested-item>label{display:flex;align-items:center;white-space:nowrap;gap:.3rem}.suggested-item>details{flex:1;min-width:0}
 
 .send-controls{position:sticky;top:0;z-index:2;background:white;padding:.65rem 0;border-bottom:1px solid var(--line);margin-bottom:.6rem}
+
+.delivery-progress{margin-top:auto}
+.delivery-progress:not([hidden])+.collection{margin-top:.6rem}
+.sending-spinner{width:1.2rem;height:1.2rem;border:.15rem solid #8497bd;border-top-color:white;border-radius:50%;flex:none;animation:send-spin 1s linear infinite}
+.delivery-progress.finished .sending-spinner{display:none}
+@keyframes send-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.sending-spinner{animation:none}}

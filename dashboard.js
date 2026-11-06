@@ -67,6 +67,38 @@ function button(text, handler, style, glyph) {
 function option(value,label) { const item=node("option",label); item.value=value; return item; }
 for (const [key,label] of Object.entries(categories)) $("category").append(option(key,label));
 let gmailSaved=false, gmailSender="";
+let deliveryProgress=null, sendDelay=[30,90];
+
+function duration(seconds) {
+    if(seconds<60) return Math.ceil(seconds)+"s";
+    const minutes=Math.ceil(seconds/60);
+    return minutes<60 ? minutes+"m" : Math.floor(minutes/60)+"h "+minutes%60+"m";
+}
+
+function renderDelivery() {
+    $("delivery-progress").hidden=!deliveryProgress;
+    if(!deliveryProgress) return;
+    const {state:phase,total,sent,processed,next_at:next}=deliveryProgress;
+    const finished=phase==="finished" || phase==="stopped";
+    $("delivery-progress").classList.toggle("finished",finished);
+    $("delivery-title").textContent=phase==="checking"?"Checking "+total+" applications":
+        phase==="connecting"?"Connecting to Gmail":
+        (phase==="stopped"?"Batch stopped · ":"")+sent+" of "+total+" sent";
+    $("delivery-meter").max=Math.max(1,total);
+    $("delivery-meter").value=processed;
+    let message="";
+    if(phase==="finished") message=sent===total?"Batch finished":"Batch finished. Check unsent jobs.";
+    else if(phase==="stopped") message="Check the batch status before retrying.";
+    else if(phase==="waiting") {
+        const seconds=Math.max(0,next-Date.now()/1000);
+        const gaps=Math.max(0,total-processed-1);
+        const left=Math.ceil(seconds);
+        message="Next in "+(left>=60 ? Math.floor(left/60)+"m "+left%60+"s" : left+"s");
+        if(gaps) message+=" · about "+duration(seconds+gaps*sendDelay[0])+"–"+duration(seconds+gaps*sendDelay[1])+" left";
+    } else if(phase==="sending") message="Gmail is processing the batch…";
+    $("delivery-timing").textContent=message;
+}
+setInterval(()=>{if(deliveryProgress?.state==="waiting")renderDelivery();},1000);
 let startingCollection=false, generalTemplate=false;
 let infinity=false, delivering=false;
 const state = {rows:sample?sampleRows:[], view:"discover", active:sample?sampleRows[0].id:null, tab:"details", grid:false,
@@ -371,8 +403,13 @@ async function reviewBatch(ids, manualId=null, broad=false, suggested=false, loc
     function updateSendLabel() {
         const count=confirmed.included.size;
         $("send-confirm").textContent=suggested ? "Send "+count+(count===1?" application":" applications") : "Approve and send";
+        const gaps=Math.max(0,count-1);
+        $("send-estimate").hidden=sample || !gaps;
+        $("send-estimate").textContent=gaps ? "Scheduled gaps: about "+duration(gaps*sendDelay[0])+"–"+
+            duration(gaps*sendDelay[1])+", plus listing checks and Gmail delivery. " : "";
     }
     updateSendLabel();
+    if(!sample && jobs.length>1) $("confirm-note").textContent+=" Messages are spaced "+sendDelay[0]+"–"+sendDelay[1]+" seconds apart.";
     const recipientCounts=new Map();
     for(const job of jobs) {
         const address=localBatch ? job.batch_recipient : job.recipient;
@@ -753,6 +790,9 @@ if (!sample) {
             generalTemplate=Boolean(result.general_template);
             infinity=result.infinity;
             delivering=result.delivery_active;
+            deliveryProgress=result.delivery_progress;
+            sendDelay=result.send_delay || sendDelay;
+            renderDelivery();
             state.completed=result.completed;
             if(!$("sender").value && result.sender && !$("confirm").open) $("sender").value=result.sender;
             $("automatic").checked=result.automatic;

@@ -19,8 +19,8 @@ Copy-Item profile.example.json profile.json
 
 ## Collect and review jobs
 
-- **Collect Jobs** runs one scan. **Scrape Jobs** starts continuous collection with up to five source workers. JobFlow pauses 15 minutes between scans. **Stop** ends the run after the current group finishes.
-- The default sources are Työmarkkinatori, Jobly, Duunitori, Kuntarekry, and Work in Finland. StaffPoint is optional. Coverage varies by source, and the dashboard reports each worker's result.
+- **Collect Jobs** runs one scan. **Scrape Jobs** starts continuous collection with four source workers enabled by default. JobFlow pauses 15 minutes between scans. **Stop** ends the run after the current group finishes.
+- The default sources are Työmarkkinatori, Jobly, Duunitori, and StaffPoint. Coverage varies by source, and the dashboard reports each worker's result.
 - Filter by location, language, category, or published email. **Last 24 hours** shows jobs whose publication date places them in that window and switches to **Newest first**. Listings without a publication date stay in the full queue. **Saved Jobs** keeps bookmarks. A source may return no relevant ads even when the collector runs successfully.
 - Open **Draft Message** to review a role-specific draft or **Email Templates** to browse examples in English and Finnish. The draft uses the vacancy's role and advertised duties.
 - **Ready to apply** ranks suggested drafts by language fit, publication time, and deadline. It uses verified application emails and leaves uncertain qualifications for review. Check the reasons on individual listings and approve the batch yourself.
@@ -41,7 +41,7 @@ Set these values in your private `profile.json` only if they apply.
 | `available_immediately` | Opt in to the statement about starting immediately in Helsinki, Espoo, or Vantaa. |
 | `sender` | Optional Gmail sender address. You can also enter it at batch review. |
 
-Use **Gmail Setup** to save your account once in Windows Credential Manager, or enter the Gmail address and app password for a single batch. Use **Forget saved Gmail** to remove the saved password. The app also supports the local `JOBBOT_SMTP_PASSWORD` environment variable. Keep the password, CVs, profile, database, and sent-email history outside Git. The repository includes a blank example profile.
+Use **Gmail Setup** to save your account once in Windows Credential Manager, or enter the Gmail address and app password for a single batch. Use **Forget saved Gmail** to remove the saved password. The app also supports the local `JOBBOT_SMTP_PASSWORD` environment variable. JobFlow waits 30–90 seconds between outgoing applications and shows the next-send countdown. Keep the launcher open until the batch finishes. Gmail account limits and recipient filtering still apply. Keep the password, CVs, profile, database, and sent-email history outside Git. The repository includes a blank example profile.
 
 ## Project layout
 

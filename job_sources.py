@@ -8,8 +8,6 @@ from send_applications import CITIES, Listing, SEARCH_QUERIES, parse_listing, pu
 SOURCES = {
     "duunitori": ("Duunitori", "https://duunitori.fi/tyopaikat", 'a[href*="/tyopaikat/tyo/"]'),
     "jobly": ("Jobly", "https://www.jobly.fi/tyopaikat/helsinki-metropolitan-area", 'h2 a[href*="/tyopaikka/"], h2 a[href*="/job/"]'),
-    "kuntarekry": ("Kuntarekry", "https://kuntarekry.fi/fi/tyopaikat/", 'main a[href*="/fi/tyopaikat/"]'),
-    "workinfinland": ("Work in Finland", "https://www.workinfinland.com/en/open-jobs/", ""),
     "barona": ("Barona Careers", "https://www.baronacareers.com/fi/fi/job", 'a[href*="/jobs/"]'),
     "staffpoint": ("StaffPoint", "https://www.staffpoint.fi/tyopaikat", 'a[href*="/tyopaikat/"]'),
 }
@@ -30,25 +28,17 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
         browser = await playwright.chromium.launch()
         try:
             page = await browser.new_page()
-            detail = await browser.new_page() if source in {"jobly", "kuntarekry", "staffpoint"} else None
-            def result_links():
-                if source == "workinfinland":
-                    return page.get_by_role("link", name="Go to job site", exact=True)
-                return page.locator(selector)
+            detail = await browser.new_page() if source in {"jobly", "staffpoint"} else None
+            links = page.locator(selector)
             cities_to_search = sorted(CITIES)
             rounds = max_pages * (len(cities_to_search) if source == "duunitori" else 2 if source == "jobly" else 1)
-            if source == "kuntarekry":
-                rounds = min(max_pages + 2, 5)
             for number in range(1, rounds + 1):
                 if cancelled() or len(seen) >= limit:
                     return
                 city = cities_to_search[(number - 1) % len(cities_to_search)] if source == "duunitori" else None
                 page_number = (number - 1) // len(cities_to_search) + 1 if city else number
-                if source == "kuntarekry" and number <= len(cities_to_search):
-                    city = cities_to_search[number - 1]
-                    page_number = 1
                 report(f"{label} · reading {city or 'results'} page {page_number}")
-                if source in {"duunitori", "jobly", "kuntarekry"} or number == 1:
+                if source in {"duunitori", "jobly"} or number == 1:
                     params = {"sivu": page_number, "alue": city}
                     if terms:
                         params["haku"] = ";".join(terms)
@@ -57,12 +47,6 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
                         index = (number - 1) // 2
                         seed = base if number % 2 == 0 else base.replace("/tyopaikat/", "/tyopaikat/kuljetus-ja-logistiikka/")
                         url = f"{seed}?{urlencode({'page': index})}"
-                    if source == "kuntarekry":
-                        if city:
-                            url = f"https://kuntarekry.fi/fi/tyopaikat-sijainnin-mukaan/uusimaa/{city}/"
-                        else:
-                            category = ("ruokapalvelut", "siivous-ja-laitoshuolto")[number - 4]
-                            url = f"https://kuntarekry.fi/fi/tyopaikat-tehtavan-mukaan/tekninen-ala/{category}/"
                     response = await page.goto(url, wait_until="domcontentloaded", timeout=20000)
                     if not response or not response.ok:
                         report(f"{label} · search returned HTTP {response.status if response else 'unavailable'}")
@@ -74,13 +58,13 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
                         break
                     await next_page.click(timeout=4000)
                 try:
-                    await result_links().first.wait_for(state="attached", timeout=12000)
+                    await links.first.wait_for(state="attached", timeout=12000)
                 except TimeoutError:
                     report(f"{label} · no new result links loaded")
-                    if source in {"duunitori", "jobly", "kuntarekry"}:
+                    if source in {"duunitori", "jobly"}:
                         continue
                     break
-                records = await result_links().evaluate_all("""links => links.map(a => {
+                records = await links.evaluate_all("""links => links.map(a => {
                     const card = a.querySelector("h2,h3,h4") ? a : (
                         a.closest("article, li, .job-box, .job-list-item, .views-row") || a.parentElement?.parentElement || a.parentElement || a
                     );
@@ -89,7 +73,7 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
                 })""")
                 found_links = {href for href, _, _ in records}
                 if found_links and found_links <= previous_links:
-                    if source in {"duunitori", "jobly", "kuntarekry"}:
+                    if source in {"duunitori", "jobly"}:
                         continue
                     break
                 previous_links.update(found_links)
@@ -97,14 +81,9 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
                     if cancelled() or len(seen) >= limit:
                         return
                     parts = urlsplit(href)
-                    if source == "kuntarekry":
-                        slug = parts.path.rstrip("/").rsplit("/", 1)[-1]
-                        title = slug.replace("-", " ")
                     if parts.scheme != "https" or not parts.netloc or not title or not ROLES.search(title):
                         continue
-                    if source != "workinfinland" and parts.netloc.removeprefix("www.") != urlsplit(base).netloc.removeprefix("www."):
-                        continue
-                    if source == "kuntarekry" and not re.search(r"/fi/tyopaikat/[^/]+-[a-z0-9]+/?$", parts.path, re.I):
+                    if parts.netloc.removeprefix("www.") != urlsplit(base).netloc.removeprefix("www."):
                         continue
                     if source == "staffpoint" and not re.search(r"-[A-Za-z0-9]{6}$", parts.path):
                         continue
@@ -127,10 +106,6 @@ async def discover(source, terms, max_pages, limit, report, cancelled):
                                 content = await main.inner_text(timeout=3500)
                                 parsed = parse_listing(clean, title, content)
                                 published_at = publication_timestamp(content, label) or published_at
-                                if source == "kuntarekry":
-                                    heading = main.locator("h1").first
-                                    if await heading.count():
-                                        title = await heading.inner_text(timeout=2500)
                                 hrefs = await main.locator('a[href^="mailto:"]').evaluate_all(
                                     "links => links.map(link => link.getAttribute('href'))")
                                 card = content + "".join("\nPublished contact: " + urlsplit(href).path for href in hrefs)

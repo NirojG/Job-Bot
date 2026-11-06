@@ -21,7 +21,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from job_sources import SOURCES, discover
 from job_decisions import assess, batch_recipient
 import gmail_credentials
-from review_app import CACHE, send_batch
+from review_app import CACHE, MAX_SEND_DELAY, MIN_SEND_DELAY, send_batch
 from send_applications import (
     published_contacts, publication_timestamp,
     DIRECTORY, ENGLISH, SEARCH_QUERIES, TEMPLATES, Listing, match, canonical_url, draft, evaluate, history_status,
@@ -37,7 +37,7 @@ class JobFlowServer(ThreadingHTTPServer):
         super().server_bind()
 
 
-DEFAULT_SOURCES = ("jmf", "jobly", "duunitori", "kuntarekry", "workinfinland")
+DEFAULT_SOURCES = ("jmf", "jobly", "duunitori", "staffpoint")
 INFINITY_INTERVAL = 15 * 60
 
 
@@ -48,6 +48,7 @@ class Dashboard:
         self.infinity_stop = threading.Event()
         self.infinity = False
         self.delivery_active = False
+        self.delivery_progress = None
         self.mode = "idle"
         self.message = "Ready to collect"
         self.activity = []
@@ -435,8 +436,19 @@ class Dashboard:
         for job, recipient, subject, body in selected:
             make_message(recipient, profile, subject, body, job)
 
+        self.delivery_progress = {"state": "checking", "total": len(selected), "sent": 0, "processed": 0, "next_at": None}
+
+        def progress(**status):
+            with self.lock:
+                self.delivery_progress = status
+
         def deliver():
-            results = send_batch(selected, profile, password, self.report, choices, manual_urls)
+            try:
+                results = send_batch(selected, profile, password, self.report, choices, manual_urls, progress)
+            except Exception:
+                with self.lock:
+                    self.delivery_progress = {**self.delivery_progress, "state": "stopped", "next_at": None}
+                raise
             with self.lock, closing(open_history()) as db:
                 for job, *_ in selected:
                     key = vacancy_key(job.url)
@@ -450,6 +462,8 @@ class Dashboard:
                             self.holds[key] = outcome
                         self.add(job, db)
                 count = sum(value == "sent" for value in results.values())
+                self.delivery_progress = {"state": "finished", "total": len(selected), "sent": count,
+                                          "processed": len(results), "next_at": None}
                 self.report(f"Sent {count} of {len(selected)}. Check the remaining row statuses.")
 
         if self.mode != "collection":
@@ -513,6 +527,8 @@ def serve(sample=False):
                     return self.reply(200, {
                         "revision": dashboard.revision, "mode": dashboard.mode, "message": dashboard.message,
                         "infinity": dashboard.infinity, "delivery_active": dashboard.delivery_active,
+                        "delivery_progress": dashboard.delivery_progress,
+                        "send_delay": [MIN_SEND_DELAY, MAX_SEND_DELAY],
                         "swarm_supported": not sample, "general_template": True,
                         "activity": dashboard.activity, "sources": list(dashboard.source_runs.values()), "added": dashboard.added, "completed": len(dashboard.completed),
                         "counts": Counter(row["status"] for row in dashboard.rows.values()),
