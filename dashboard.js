@@ -67,7 +67,7 @@ function button(text, handler, style, glyph) {
 function option(value,label) { const item=node("option",label); item.value=value; return item; }
 for (const [key,label] of Object.entries(categories)) $("category").append(option(key,label));
 let gmailSaved=false, gmailSender="";
-let deliveryProgress=null, sendDelay=[30,90];
+let deliveryProgress=null, sendDelay=[30,90], submittingBatch=false;
 
 function duration(seconds) {
     if(seconds<60) return Math.ceil(seconds)+"s";
@@ -81,13 +81,17 @@ function renderDelivery() {
     const {state:phase,total,sent,processed,next_at:next}=deliveryProgress;
     const finished=phase==="finished" || phase==="stopped";
     $("delivery-progress").classList.toggle("finished",finished);
-    $("delivery-title").textContent=phase==="checking"?"Checking "+total+" applications":
+    $("delivery-title").textContent=phase==="submitting"?"Starting batch":
+        phase==="checking"?"Checking "+total+" applications":
         phase==="connecting"?"Connecting to Gmail":
         (phase==="stopped"?"Batch stopped · ":"")+sent+" of "+total+" sent";
     $("delivery-meter").max=Math.max(1,total);
-    $("delivery-meter").value=processed;
+    if(["submitting","checking","connecting"].includes(phase)) $("delivery-meter").removeAttribute("value");
+    else $("delivery-meter").value=processed;
     let message=deliveryProgress.message || "";
-    if(phase==="finished" && !message) message=sent===total?"Batch finished":"Batch finished. Check unsent jobs.";
+    if(phase==="submitting") message="Starting delivery for "+total+" selected applications…";
+    else if(phase==="checking") message="Checking the selected listings before contacting Gmail…";
+    else if(phase==="finished" && !message) message=sent===total?"Batch finished":"Batch finished. Check unsent jobs.";
     else if(phase==="waiting") {
         const seconds=Math.max(0,next-Date.now()/1000);
         const gaps=Math.max(0,total-processed-1);
@@ -692,6 +696,14 @@ $("send-form").onsubmit=guard(async event=>{
     $("send-confirm").disabled=true;
     $("send-error").hidden=true;
     const password=$("password").value;
+    const sendLabel=$("send-confirm").textContent;
+    $("send-confirm").textContent="Starting batch…";
+    $("send-confirm").setAttribute("aria-busy","true");
+    if(!sample) {
+        submittingBatch=true;
+        deliveryProgress={state:"submitting",total:ids.length,sent:0,processed:0};
+        renderDelivery();
+    }
     try {
         const manual=confirmed.manualId ? {[confirmed.manualId]:$("manual-recipient").value.trim()} :
             Object.fromEntries(ids.filter(id=>id in confirmed.recipients).map(id=>[id,confirmed.recipients[id]]));
@@ -706,7 +718,16 @@ $("send-form").onsubmit=guard(async event=>{
     } catch(error) {
         $("send-error").textContent=error.message;
         $("send-error").hidden=false;
-    } finally {$("send-confirm").disabled=false;}
+        if(!sample) {
+            deliveryProgress={state:"stopped",total:ids.length,sent:0,processed:0,message:error.message};
+            renderDelivery();
+        }
+    } finally {
+        submittingBatch=false;
+        $("send-confirm").disabled=false;
+        $("send-confirm").textContent=sendLabel;
+        $("send-confirm").removeAttribute("aria-busy");
+    }
 });
 $("automatic").disabled=sample;
 $("activity").textContent=sample?"Sample data ready":"Connecting to JobFlow…";
@@ -801,7 +822,7 @@ if (!sample) {
             generalTemplate=Boolean(result.general_template);
             infinity=result.infinity;
             delivering=result.delivery_active;
-            deliveryProgress=result.delivery_progress;
+            if(!submittingBatch) deliveryProgress=result.delivery_progress;
             sendDelay=result.send_delay || sendDelay;
             renderDelivery();
             state.completed=result.completed;

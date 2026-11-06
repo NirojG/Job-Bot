@@ -1,13 +1,14 @@
 import tempfile
 import unittest
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+from dashboard import Dashboard
 from job_decisions import assess, batch_recipient
 from review_app import send_batch
-from send_applications import Listing, canonical_url, draft, evaluate, parse_listing, vacancy_key
+from send_applications import Listing, canonical_url, draft, evaluate, open_history, parse_listing, vacancy_key
 
 
 class ReviewTests(unittest.TestCase):
@@ -52,6 +53,24 @@ class ReviewTests(unittest.TestCase):
         no_email = replace(job, description="Location: Espoo\nJob description\nPacking orders.",
                            application="Apply online")
         self.assertIsNone(batch_recipient(no_email, "portal"))
+
+    def test_external_email_ready_excludes_uncertain_delivery_history(self):
+        job = replace(self.job, source="Jobly", url="https://www.jobly.fi/job/warehouse",
+                      description="Location: Vantaa\nJob description\nSend your application to jobs@employer.fi")
+        key = vacancy_key(job.url)
+        with tempfile.TemporaryDirectory() as directory, patch("send_applications.DIRECTORY", Path(directory)):
+            dashboard = Dashboard()
+            with closing(open_history()) as db, db:
+                dashboard.add(job, db)
+                self.assertEqual(dashboard.rows[key]["batch_recipient"], "jobs@employer.fi")
+                db.execute("INSERT INTO contacted_recipients VALUES (?, NULL)", ("jobs@employer.fi",))
+                dashboard.add(job, db)
+                self.assertIsNone(dashboard.rows[key]["batch_recipient"])
+                self.assertIn("legacy contact", dashboard.rows[key]["reason"])
+                db.execute("INSERT INTO delivery_log VALUES (?, 'pending verification')", (key,))
+                dashboard.add(job, db)
+                self.assertIsNone(dashboard.rows[key]["batch_recipient"])
+                self.assertEqual(dashboard.rows[key]["reason"], "pending verification")
 
     def test_recommends_clear_local_email_match(self):
         self.assertEqual(assess(self.job, {}, "draft", "", True)["fit"], "ready")

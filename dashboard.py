@@ -176,11 +176,12 @@ class Dashboard:
             decision, reason, recipient = "portal", "Check the worksite and apply on the source site", None
         english = any(value.casefold() in {"english", "englanti", "en"} for value in job.work_languages)
         english = english or match(ENGLISH, job.description)
-        if recipient:
-            previous = history_status(db, job, recipient)
+        batch_address = batch_recipient(job, decision, recipient)
+        if recipient or batch_address:
+            previous = history_status(db, job, recipient or batch_address)
             if previous or key in self.holds:
                 decision = "sent" if previous == "sent" else "held"
-                reason, recipient = previous or self.holds[key], None
+                reason, recipient, batch_address = previous or self.holds[key], None, None
         contract = "Part-time" if match(r"osa-aikatyö|part-time", job.description) else (
             "Full-time" if match(r"kokoaikatyö|full-time", job.description) else "")
         deadline = listing_deadline(job)
@@ -192,7 +193,7 @@ class Dashboard:
         payload = json.dumps([asdict(job), self.profile], sort_keys=True, ensure_ascii=False)
         row["version"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         row["assessment"] = assess(job, self.profile, decision, reason, english)
-        row["batch_recipient"] = batch_recipient(job, decision, recipient)
+        row["batch_recipient"] = batch_address
         row["deadline_days"] = (deadline - date.today()).days if deadline else None
         if decision == "portal":
             for line in job.application.splitlines():
@@ -420,8 +421,8 @@ class Dashboard:
             recipient = row.get("recipient")
             if local_batch:
                 recipient = batch_recipient(job, row["status"], recipient)
-                if not recipient:
-                    raise ValueError("A selected job has no confirmed local worksite and usable email. Reopen Email-ready batch.")
+                if not recipient or recipient != row.get("batch_recipient"):
+                    raise ValueError("A selected job is no longer email-ready. Reopen Email-ready batch.")
                 if recipient != row.get("recipient"):
                     manual_urls.add(job.url)
             elif key in manual:

@@ -27,11 +27,15 @@
     <div><span data-icon="send"></span>Applications Completed <strong id="sent-count">0</strong></div>
     <div><span data-icon="clock"></span>Pending Review <strong id="pending-count">0</strong></div>
   </div>
-  <div id="delivery-progress" class="collection delivery-progress" hidden><span class="sending-spinner" aria-hidden="true"></span><div><strong id="delivery-title" aria-live="polite"></strong><small id="delivery-timing"></small><progress id="delivery-meter" aria-label="Email batch progress"></progress></div></div>
   <div class="collection"><span data-icon="refresh"></span><div><strong id="mode">Last collection</strong><small id="activity" aria-live="polite">Loading workspace…</small><progress id="progress" hidden aria-label="Collection in progress"></progress></div></div>
 </aside>
 <main class="workspace">
 <header><h1 id="heading">Discover Jobs</h1><p id="subtitle">Find, review and apply to suitable jobs in Finland.</p></header>
+<section id="delivery-progress" class="delivery-progress" aria-label="Email batch delivery" hidden>
+  <div class="delivery-head"><span class="sending-spinner" aria-hidden="true"></span><span>Email batch</span><strong id="delivery-title" aria-live="polite"></strong></div>
+  <progress id="delivery-meter" aria-label="Email batch progress"></progress>
+  <p id="delivery-timing"></p>
+</section>
 <div class="columns">
 <section class="feed" aria-label="Job feed">
   <form id="search-form" class="search"><label><span data-icon="search"></span><input id="query" placeholder="Search jobs (e.g., warehouse, cleaning, kitchen...)" aria-label="Search jobs"></label><button class="primary" id="collect"><span data-icon="refresh"></span>Collect Jobs</button><button id="infinity" type="button">Scrape Jobs</button><button id="stop" type="button" hidden>Stop</button></form>
