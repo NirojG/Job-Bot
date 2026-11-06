@@ -5,6 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+from job_decisions import assess
 from review_app import send_batch
 from send_applications import Listing, canonical_url, draft, evaluate, parse_listing, vacancy_key
 
@@ -36,6 +37,18 @@ class ReviewTests(unittest.TestCase):
             Hakuohjeet: Lähetä hakemus osoitteeseen jobs@employer.fi
         """)
         self.assertEqual(evaluate(job, {})[0], "review")
+
+    def test_recommends_clear_local_email_match(self):
+        self.assertEqual(assess(self.job, {}, "draft", "", True)["fit"], "ready")
+        self.assertEqual(assess(self.job, {}, "portal", "", True)["fit"], "online")
+        self.assertEqual(assess(self.job, {}, "draft", "", False)["fit"], "check")
+
+    def test_excludes_regulated_qualification_from_suggested_batch(self):
+        job = replace(self.job, title="Personal assistant",
+                      description="English is accepted. A nursing qualification recognised by Valvira is required.")
+        assessment = assess(job, {}, "draft", "", True)
+        self.assertEqual(assessment["fit"], "check")
+        self.assertIn("Valvira", assessment["evidence"])
 
     def test_draft_adapts_to_advert_and_general_mode_stays_broad(self):
         job = replace(self.job, description="The shift includes order picking and packing.")

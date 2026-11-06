@@ -36,6 +36,7 @@ const sampleRows = [
 ].map(([category,title,company,city,contract,lang,posted,status,description,requirements],index) => ({
     id:"sample-"+index, category,title,company,cities:[city],contract,lang,posted,status,description,requirements,
     published_at:Math.floor(Date.now()/1000)-[48,72,6,96][index]*3600,
+    assessment:{fit:status==="draft"?"ready":status==="portal"?"online":"check", priority:status==="draft"?2:0},
     english:status!=="review", reason:status==="draft" ? "The worksite is in your target area and English is accepted."
         : status==="portal" ? "This employer takes applications through its online form." : "Confirm the employer’s Finnish requirement.",
     application:status==="draft" ? "The employer accepts applications by email." : "Check the original advertisement for application instructions.",
@@ -118,6 +119,13 @@ const row = id => state.rows.find(job=>job.id===id);
 const city = job => job.cities.filter(Boolean).join(", ") || "Unconfirmed";
 const eligible = job => job?.status==="draft" && Boolean(job.recipient);
 const hasEmail = job => eligible(job) || Boolean(job?.contact_count);
+const fitLabels={ready:"Good fit",check:"Check first",online:"Apply online",outside:"Outside preferences"};
+function suggestedJobs() {
+    return state.rows.filter(job=>eligible(job) && job.assessment?.fit==="ready").sort((a,b)=>
+        b.assessment.priority-a.assessment.priority ||
+        (b.published_at || 0)-(a.published_at || 0) ||
+        (a.deadline_days ?? Infinity)-(b.deadline_days ?? Infinity));
+}
 const chip = (text,style) => node("span",text,"chip"+(style ? " "+style : ""));
 function statusChip(job) { return chip(statusNames[job.status] || "Needs Review",job.status==="draft" ? "good" : job.status==="review" ? "warn" : ""); }
 function guard(task) { return async (...args)=>{ try { await task(...args); } catch(error) { toast(error.message); } }; }
@@ -151,6 +159,9 @@ function updateStats() {
     $("save-selected").disabled=!selected.length;
     const ready=selected.filter(id=>eligible(row(id))).length;
     $("batch").disabled=!selected.length || delivering || state.mode==="delivery";
+    const suggested=suggestedJobs().length;
+    $("suggested-count").textContent=suggested;
+    $("suggested").disabled=!suggested || delivering || state.mode==="delivery";
     $("selection-note").textContent=selected.length
         ? ready+" of "+selected.length+" selected can be emailed. "+(ready<selected.length?"Use the employer’s form or review the reason on the remaining jobs.":"")
         : visibleRows.some(eligible)?"Select jobs to prepare one email batch.":"No visible jobs currently accept verified email applications. You can still select and save them.";
@@ -202,6 +213,7 @@ function render(preserveDetail=false) {
         if(postedLabel(job)) text.append(node("span",postedLabel(job),"meta"));
         const chips=node("div",undefined,"chips");
         chips.append(statusChip(job));
+        if(job.assessment) chips.append(chip(fitLabels[job.assessment.fit],job.assessment.fit==="ready"?"good":job.assessment.fit==="check"?"warn":""));
         if(categories[job.category]) chips.append(chip(categories[job.category]));
         if(job.contract) chips.append(chip(job.contract));
         chips.append(chip(job.lang || (job.english?"English confirmed":"Language to verify"),"lang"));
@@ -267,7 +279,9 @@ panel.replaceChildren(head,tabs,body,actions);
             }
             grid.append(copy,facts(job));
             const match=node("div",undefined,"match"+(eligible(job)?" good":""));
-            match.append(node("strong",eligible(job)?(sample?"Your match: Good":"Review before applying"):"Application review"),node("p",job.reason));
+            match.append(node("strong",job.assessment ? fitLabels[job.assessment.fit] : eligible(job)?(sample?"Your match: Good":"Review before applying"):"Application review"),
+                node("p",job.assessment?.reason || job.reason));
+            if(job.assessment?.evidence) match.append(node("p",job.assessment.evidence));
             body.append(grid,match);
         } else if(state.tab==="application") {
             body.append(node("h3","How to apply"),node("p",detail.application || "Follow the instructions in the original advertisement.","description"),facts(job));
@@ -312,7 +326,7 @@ async function markApplied(job) {
     toast("Marked as applied.");
 }
 
-async function reviewBatch(ids, manualId=null, broad=false) {
+async function reviewBatch(ids, manualId=null, broad=false, suggested=false) {
     if(delivering || state.mode==="delivery") throw new Error("An email batch is already being sent.");
     const selected=ids.map(row).filter(Boolean);
     const jobs=selected.filter(job=>eligible(job) || job.id===manualId || (broad && hasEmail(job)));
@@ -346,6 +360,14 @@ async function reviewBatch(ids, manualId=null, broad=false) {
     if(manualId) $("confirm-note").textContent="Choose a published address. Check its context and the employer’s application route before sending.";
     if(broad) $("confirm-note").textContent=jobs.length+" jobs with published email addresses. Review the recipient for each and uncheck any you want to skip.";
     if(!jobs.length) $("confirm-note").textContent="None of these jobs can be emailed. Open the employer’s instructions or switch to email-ready jobs.";
+    if(suggested) $("confirm-note").textContent=jobs.length+" suggested applications. Review the drafts and uncheck any jobs you want to skip.";
+    const recipientCounts=new Map();
+    for(const job of jobs) if(job.recipient) {
+        recipientCounts.set(job.recipient,(recipientCounts.get(job.recipient) || 0)+1);
+    }
+    const shared=[...recipientCounts.values()].some(count=>count>1);
+    $("shared-recipient").hidden=!shared;
+    $("shared-recipient").textContent=shared?"Some selected jobs share a recipient. Check whether you want to send a separate application for each vacancy.":"";
     let updating=0;
     $("send-confirm").disabled=false;
     $("batch-review").replaceChildren(...jobs.map((job,index)=>{
@@ -381,7 +403,7 @@ async function reviewBatch(ids, manualId=null, broad=false) {
         options.append(template,language);
         const summary=node("summary",job.title+(job.recipient?" · "+job.recipient:broad?" · Published contacts":" · Choose recipient above"));
         section.append(summary,options,output);
-        if(broad) {
+        if(broad || suggested) {
             const include=node("input");
             include.type="checkbox";
             include.checked=true;
@@ -459,6 +481,12 @@ $("show-more").onclick=()=>{state.limit+=35;render(true);};
 $("select-all").onchange=()=>{const value=$("select-all").checked; for(const job of visibleRows) check(job,value);render(true);};
 $("save-selected").onclick=guard(()=>save([...state.checked]));
 $("batch").onclick=guard(()=>reviewBatch([...state.checked]));
+$("suggested").onclick=guard(async()=>{
+    const ids=suggestedJobs().map(job=>job.id);
+    $("suggested").disabled=true;
+    try {await reviewBatch(ids,null,false,true);}
+    finally {updateStats();}
+});
 $("desperate").onclick=guard(async()=>{
     if(!sample && !generalTemplate) throw new Error("Close the old JobFlow terminal and reopen the launcher to use Desperate Mode.");
     const ids=state.rows.filter(job=>hasEmail(job) && !["held","sent"].includes(job.status)).map(job=>job.id);

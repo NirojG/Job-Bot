@@ -23,6 +23,7 @@ Copy-Item profile.example.json profile.json
 - The default sources are Työmarkkinatori, Jobly, Duunitori, Kuntarekry, and Work in Finland. StaffPoint is optional. Coverage varies by source, and the dashboard reports each worker's result.
 - Filter by location, language, category, or published email. **Last 24 hours** shows jobs whose publication date places them in that window and switches to **Newest first**. Listings without a publication date stay in the full queue. **Saved Jobs** keeps bookmarks. A source may return no relevant ads even when the collector runs successfully.
 - Open **Draft Message** to review a role-specific draft or **Email Templates** to browse examples in English and Finnish. The draft uses the vacancy's role and advertised duties.
+- **Ready to apply** ranks suggested drafts by language fit, publication time, and deadline. It uses verified application emails and leaves uncertain qualifications for review. Check the reasons on individual listings and approve the batch yourself.
 - **Desperate Mode** gathers available jobs with published addresses into one review using the general template. Check recipients and uncheck jobs you want to skip before approving.
 - For a portal application, follow the employer's instructions and use **Mark as applied** once you've submitted it. Completed vacancies leave the active queue, and SQLite keeps a completion record to help prevent duplicate applications.
 

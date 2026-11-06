@@ -14,10 +14,12 @@ import webbrowser
 from collections import Counter
 from contextlib import closing
 from dataclasses import asdict, replace
+from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from job_sources import SOURCES, discover
+from job_decisions import assess
 from review_app import CACHE, send_batch
 from send_applications import (
     published_contacts, publication_timestamp,
@@ -185,6 +187,8 @@ class Dashboard:
                "published_at": job.published_at or publication_timestamp(job.description, job.source or external or "")}
         payload = json.dumps([asdict(job), self.profile], sort_keys=True, ensure_ascii=False)
         row["version"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        row["assessment"] = assess(job, self.profile, decision, reason, english)
+        row["deadline_days"] = (deadline - date.today()).days if deadline else None
         if decision == "portal":
             for line in job.application.splitlines():
                 if line.startswith("Apply via the portal: "):
