@@ -6,6 +6,7 @@ import os
 import queue
 import random
 import shutil
+import smtplib
 import threading
 import time
 import tkinter as tk
@@ -88,10 +89,14 @@ def send_batch(selected, profile, password, report, choices=None, manual_urls=()
                         report(f"Sent {sent} of {total}. Next application in {delay} seconds.")
                         time.sleep(delay)
                 update("sending", index)
-    except Exception as error:
-        report(f"Email connection closed ({type(error).__name__}). Check batch results.")
+    except smtplib.SMTPAuthenticationError:
+        connection_error = "Gmail rejected sign-in. Check the Gmail address and app password."
+    except (OSError, smtplib.SMTPException):
+        connection_error = "Could not complete the Gmail connection. Check your network and try again."
+    else:
+        connection_error = "Batch stopped before this email was attempted."
     for job, _, _ in ready:
-        outcomes.setdefault(job.url, "Unsent. Check email connection before trying again.")
+        outcomes.setdefault(job.url, connection_error)
     return outcomes
 
 

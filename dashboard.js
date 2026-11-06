@@ -86,9 +86,8 @@ function renderDelivery() {
         (phase==="stopped"?"Batch stopped · ":"")+sent+" of "+total+" sent";
     $("delivery-meter").max=Math.max(1,total);
     $("delivery-meter").value=processed;
-    let message="";
-    if(phase==="finished") message=sent===total?"Batch finished":"Batch finished. Check unsent jobs.";
-    else if(phase==="stopped") message="Check the batch status before retrying.";
+    let message=deliveryProgress.message || "";
+    if(phase==="finished" && !message) message=sent===total?"Batch finished":"Batch finished. Check unsent jobs.";
     else if(phase==="waiting") {
         const seconds=Math.max(0,next-Date.now()/1000);
         const gaps=Math.max(0,total-processed-1);
@@ -682,19 +681,31 @@ $("email-only").onclick=()=>{
 $("sample-toggle").textContent=sample?"Open live dashboard":"Open sample dashboard";
 $("sample-toggle").onclick=()=>{location.href=sample?"/":"/?sample=1";};
 $("options-form").onsubmit=event=>{event.preventDefault();$("options").close();render();};
-$("confirm").onclose=()=>$("password").value="";
+$("confirm").onclose=()=>{
+    $("password").value="";
+    $("send-error").hidden=true;
+};
 $("send-form").onsubmit=guard(async event=>{
     event.preventDefault();
     const ids=confirmed.ids.filter(id=>confirmed.included.has(id));
     if(!ids.length) {toast("Select at least one job to send.");return;}
     $("send-confirm").disabled=true;
-    const password=$("password").value;$("password").value="";
+    $("send-error").hidden=true;
+    const password=$("password").value;
     try {
         const manual=confirmed.manualId ? {[confirmed.manualId]:$("manual-recipient").value.trim()} :
             Object.fromEntries(ids.filter(id=>id in confirmed.recipients).map(id=>[id,confirmed.recipients[id]]));
         await api.send(ids,confirmed.revision,confirmed.choices,password,$("sender").value.trim(),manual,confirmed.versions,confirmed.localBatch);
+        if(!sample) {
+            delivering=true;
+            deliveryProgress={state:"checking",total:ids.length,sent:0,processed:0};
+            renderDelivery();
+        }
         for(const id of ids) state.checked.delete(id);
         $("confirm").close();render();
+    } catch(error) {
+        $("send-error").textContent=error.message;
+        $("send-error").hidden=false;
     } finally {$("send-confirm").disabled=false;}
 });
 $("automatic").disabled=sample;

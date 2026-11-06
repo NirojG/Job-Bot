@@ -447,9 +447,11 @@ class Dashboard:
                 results = send_batch(selected, profile, password, self.report, choices, manual_urls, progress)
             except Exception:
                 with self.lock:
-                    self.delivery_progress = {**self.delivery_progress, "state": "stopped", "next_at": None}
+                    self.delivery_progress = {**self.delivery_progress, "state": "stopped", "next_at": None,
+                                              "message": "JobFlow stopped during delivery. Check Gmail Sent and the launcher before retrying."}
                 raise
             with self.lock, closing(open_history()) as db:
+                failures = Counter()
                 for job, *_ in selected:
                     key = vacancy_key(job.url)
                     outcome = results.get(job.url)
@@ -459,11 +461,17 @@ class Dashboard:
                         self.completed.add(key)
                     else:
                         if outcome:
-                            self.holds[key] = outcome
+                            failures[outcome] += 1
+                            if outcome.startswith(("Listing changed", "Delivery interrupted")):
+                                self.holds[key] = outcome
                         self.add(job, db)
                 count = sum(value == "sent" for value in results.values())
+                summary = " ".join(f"{number} · {reason}" for reason, number in failures.items())
+                already_sent = sum(value == "already sent" for value in results.values())
+                if already_sent:
+                    summary += f" {already_sent} already sent and skipped."
                 self.delivery_progress = {"state": "finished", "total": len(selected), "sent": count,
-                                          "processed": len(results), "next_at": None}
+                                          "processed": len(results), "next_at": None, "message": summary.strip()}
                 self.report(f"Sent {count} of {len(selected)}. Check the remaining row statuses.")
 
         if self.mode != "collection":
