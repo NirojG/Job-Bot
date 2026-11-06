@@ -2,7 +2,10 @@
 
 import re
 
-from send_applications import BASIC_FINNISH, CITIES, PASSPORT, REQUIREMENT, match, role_for
+from send_applications import (
+    BASIC_FINNISH, CITIES, EMAIL_LINE, PASSPORT, PORTAL_ONLY, REQUIREMENT, match,
+    parse_listing, published_contacts, role_for,
+)
 
 REGULATED = r"valvira|laillistett[ua]|registered (?:nurse|healthcare)|(?:nursing|practical nurse) qualification|(?:sairaanhoitajan|lähihoitajan) (?:tai lähihoitajan )?(?:koulutus|tutkinto)"
 QUALIFICATION = r"(?:vaaditaan|edellytämme|edellytetään|kelpoisuusvaatimus|required|must have|mandatory)[^.!?\n]{0,90}(?:qualification|degree|certificate|license|licence|tutkint|pätevy|kortti)|(?:qualification|degree|certificate|license|licence|tutkint\w*|pätevy\w*|kortti)\s+(?:is required|is mandatory|vaaditaan|edellytetään)"
@@ -16,6 +19,34 @@ def excerpt(description, pattern):
             start = max(0, hit.start() - 45)
             return line[start:start + 220].strip()
     return ""
+
+
+def batch_recipient(job, status, verified_recipient=None):
+    """Choose one public recruiting address after verifying the worksite from the ad."""
+    if status in {"skip", "held", "sent"} or match(PORTAL_ONLY, job.application + "\n" + job.description):
+        return None
+    # Search-page matches can contain an employer's office or omit other worksites.
+    worksites = parse_listing(job.url, job.title, job.description).municipalities
+    cities = {city.strip().casefold() for city in worksites if city.strip()}
+    if not cities or not cities <= CITIES:
+        return None
+    if verified_recipient:
+        return verified_recipient
+    candidates = []
+    for address, context in published_contacts(job).items():
+        mailbox = address.split("@", 1)[0]
+        if match(r"privacy|tietosuoja|media enquiries|press contact|unsubscribe", context):
+            continue
+        if match(EMAIL_LINE, context) and not match(r"questions?|enquiries|inquiries|lisätiedot|tiedustelut", context):
+            priority = 3
+        elif match(r"recruit|rekry|hiring|lisätiedot|yhteyshenkilö|contact person", context + " " + mailbox):
+            priority = 2
+        elif re.fullmatch(r"[\w-]+\.[\w-]+", mailbox):
+            priority = 1
+        else:
+            continue
+        candidates.append((-priority, address))
+    return min(candidates)[1] if candidates else None
 
 
 def assess(job, profile, status, reason, english):

@@ -66,6 +66,7 @@ function button(text, handler, style, glyph) {
 }
 function option(value,label) { const item=node("option",label); item.value=value; return item; }
 for (const [key,label] of Object.entries(categories)) $("category").append(option(key,label));
+let gmailSaved=false, gmailSender="";
 let startingCollection=false, generalTemplate=false;
 let infinity=false, delivering=false;
 const state = {rows:sample?sampleRows:[], view:"discover", active:sample?sampleRows[0].id:null, tab:"details", grid:false,
@@ -121,7 +122,7 @@ const eligible = job => job?.status==="draft" && Boolean(job.recipient);
 const hasEmail = job => eligible(job) || Boolean(job?.contact_count);
 const fitLabels={ready:"Good fit",check:"Check first",online:"Apply online",outside:"Outside preferences"};
 function suggestedJobs() {
-    return state.rows.filter(job=>eligible(job) && job.assessment?.fit==="ready").sort((a,b)=>
+    return state.rows.filter(job=>eligible(job) && (sample || job.batch_recipient) && job.assessment?.fit==="ready").sort((a,b)=>
         b.assessment.priority-a.assessment.priority ||
         (b.published_at || 0)-(a.published_at || 0) ||
         (a.deadline_days ?? Infinity)-(b.deadline_days ?? Infinity));
@@ -162,6 +163,7 @@ function updateStats() {
     const suggested=suggestedJobs().length;
     $("suggested-count").textContent=suggested;
     $("suggested").disabled=!suggested || delivering || state.mode==="delivery";
+    $("email-batch").disabled=!state.rows.some(job=>job.batch_recipient) || delivering || state.mode==="delivery";
     $("selection-note").textContent=selected.length
         ? ready+" of "+selected.length+" selected can be emailed. "+(ready<selected.length?"Use the employer’s form or review the reason on the remaining jobs.":"")
         : visibleRows.some(eligible)?"Select jobs to prepare one email batch.":"No visible jobs currently accept verified email applications. You can still select and save them.";
@@ -186,7 +188,7 @@ function render(preserveDetail=false) {
         (state.view!=="applications" || ["draft","portal","held","sent"].includes(job.status)) &&
         (!where || (where==="unknown" ? !job.cities.some(Boolean) : job.cities.includes(where))) &&
         (language!=="english" || job.english) && (!category || job.category===category) &&
-        (!contract || (job.contract || "Unknown")===contract) && (!status || (status==="email" ? hasEmail(job) : job.status===status)) &&
+        (!contract || (job.contract || "Unknown")===contract) && (!status || (status==="email" ? (sample ? hasEmail(job) : Boolean(job.batch_recipient)) : job.status===status)) &&
         (!needle || [job.title,job.company,city(job),categories[job.category]].join(" ").toLowerCase().includes(needle)));
     if($("sort").value==="title") visibleRows.sort((a,b)=>a.title.localeCompare(b.title));
     else if($("sort").value==="recent") visibleRows.sort((a,b)=>(b.published_at || 0)-(a.published_at || 0));
@@ -326,19 +328,20 @@ async function markApplied(job) {
     toast("Marked as applied.");
 }
 
-async function reviewBatch(ids, manualId=null, broad=false, suggested=false) {
+async function reviewBatch(ids, manualId=null, broad=false, suggested=false, localBatch=false) {
     if(delivering || state.mode==="delivery") throw new Error("An email batch is already being sent.");
     const selected=ids.map(row).filter(Boolean);
-    const jobs=selected.filter(job=>eligible(job) || job.id===manualId || (broad && hasEmail(job)));
+    const jobs=selected.filter(job=>localBatch ? Boolean(job.batch_recipient) :
+        eligible(job) || job.id===manualId || (broad && hasEmail(job)));
     const otherJobs=selected.filter(job=>!jobs.includes(job));
     const snapshot=state.revision, choices=Object.fromEntries(jobs.map(job=>[
-        job.id,broad ? {template:"general",language:"auto"} : updateChoice(job)
+        job.id,localBatch ? {template:"auto",language:"auto"} : broad && !suggested ? {template:"general",language:"auto"} : updateChoice(job)
     ]));
     const drafts=[];
-    for(let index=0;index<jobs.length;index+=8) {
+    for(let index=0;!localBatch && index<jobs.length;index+=8) {
         drafts.push(...await Promise.all(jobs.slice(index,index+8).map(job=>api.draft(job,choices[job.id]))));
     }
-    confirmed={ids:jobs.map(job=>job.id),revision:snapshot,versions:Object.fromEntries(jobs.map(job=>[job.id,job.version])),choices,manualId,broad,recipients:{},included:new Set(jobs.map(job=>job.id))};
+    confirmed={ids:jobs.map(job=>job.id),revision:snapshot,versions:Object.fromEntries(jobs.map(job=>[job.id,job.version])),choices,manualId,broad,localBatch,recipients:{},included:new Set(jobs.map(job=>job.id))};
     $("manual-label").hidden=!manualId;
     const recipient=$("manual-recipient"), context=$("contact-context");
     recipient.required=Boolean(manualId);
@@ -353,17 +356,27 @@ async function reviewBatch(ids, manualId=null, broad=false, suggested=false) {
         recipient.onchange();
     }
     $("confirm-note").textContent=sample?"This is a sample. Approval only updates the demo.":"Review the recipient, message and CV before approving delivery.";
-    $("password-label").hidden=sample || !jobs.length;
-    $("sender-label").hidden=sample || !jobs.length;
-    $("sender").required=!sample && jobs.length>0;
+    $("saved-gmail").hidden=sample || !jobs.length || !gmailSaved;
+    $("saved-gmail").textContent=gmailSaved?"Sending from "+gmailSender:"";
+    if(gmailSaved) $("sender").value=gmailSender;
+    $("password-label").hidden=sample || !jobs.length || gmailSaved;
+    $("sender-label").hidden=sample || !jobs.length || gmailSaved;
+    $("sender").required=!sample && !gmailSaved && jobs.length>0;
     $("send-confirm").hidden=!jobs.length;
     if(manualId) $("confirm-note").textContent="Choose a published address. Check its context and the employer’s application route before sending.";
     if(broad) $("confirm-note").textContent=jobs.length+" jobs with published email addresses. Review the recipient for each and uncheck any you want to skip.";
     if(!jobs.length) $("confirm-note").textContent="None of these jobs can be emailed. Open the employer’s instructions or switch to email-ready jobs.";
-    if(suggested) $("confirm-note").textContent=jobs.length+" suggested applications. Review the drafts and uncheck any jobs you want to skip.";
+    if(suggested) $("confirm-note").textContent=jobs.length+" role-matched applications are ready. Approve the batch here, or expand any job to inspect its draft.";
+    if(localBatch) $("confirm-note").textContent=jobs.length+" jobs with confirmed worksites in Helsinki, Espoo, or Vantaa. JobFlow picked one published address per job.";
+    function updateSendLabel() {
+        const count=confirmed.included.size;
+        $("send-confirm").textContent=suggested ? "Send "+count+(count===1?" application":" applications") : "Approve and send";
+    }
+    updateSendLabel();
     const recipientCounts=new Map();
-    for(const job of jobs) if(job.recipient) {
-        recipientCounts.set(job.recipient,(recipientCounts.get(job.recipient) || 0)+1);
+    for(const job of jobs) {
+        const address=localBatch ? job.batch_recipient : job.recipient;
+        if(address) recipientCounts.set(address,(recipientCounts.get(address) || 0)+1);
     }
     const shared=[...recipientCounts.values()].some(count=>count>1);
     $("shared-recipient").hidden=!shared;
@@ -372,10 +385,18 @@ async function reviewBatch(ids, manualId=null, broad=false, suggested=false) {
     $("send-confirm").disabled=false;
     $("batch-review").replaceChildren(...jobs.map((job,index)=>{
         const section=node("details"), message=drafts[index];
-        section.open=jobs.length===1;
+        section.open=!localBatch && jobs.length===1;
         const output=node("div",undefined,"draft-box");
         const show=message=>{output.textContent="Subject: "+message.subject+"\nCV: "+(message.attachment || job.attachment || "Local profile CV")+"\n\n"+message.body;};
-        show(message);
+        if(message) show(message);
+        else {
+            output.textContent="Open this row to see the draft.";
+            section.addEventListener("toggle",guard(async()=>{
+                if(section.open && output.textContent==="Open this row to see the draft.") {
+                    show(await api.draft(job,choices[job.id]));
+                }
+            }));
+        }
         const options=node("div",undefined,"draft-controls"), template=node("select"), language=node("select");
         template.setAttribute("aria-label","Template for "+job.title);
         language.setAttribute("aria-label","Language for "+job.title);
@@ -401,7 +422,7 @@ async function reviewBatch(ids, manualId=null, broad=false, suggested=false) {
         });
         template.onchange=language.onchange=change;
         options.append(template,language);
-        const summary=node("summary",job.title+(job.recipient?" · "+job.recipient:broad?" · Published contacts":" · Choose recipient above"));
+        const summary=node("summary",job.title+(localBatch?" · "+job.batch_recipient:job.recipient?" · "+job.recipient:broad?" · Published contacts":" · Choose recipient above"));
         section.append(summary,options,output);
         if(broad || suggested) {
             const include=node("input");
@@ -412,7 +433,7 @@ async function reviewBatch(ids, manualId=null, broad=false, suggested=false) {
             label.append(include,document.createTextNode(" Include in this batch"));
             section.insertBefore(label,options);
             let recipient;
-            if(!eligible(job)) {
+            if(!localBatch && !eligible(job)) {
                 const contacts=Object.entries(message.contacts || {});
                 recipient=node("select");
                 recipient.setAttribute("aria-label","Published address for "+job.title);
@@ -435,15 +456,24 @@ async function reviewBatch(ids, manualId=null, broad=false, suggested=false) {
                 addressLabel.append(recipient);
                 section.insertBefore(addressLabel,options);
                 section.insertBefore(info,options);
+                if(suggested) section.insertBefore(node("p",job.reason),options);
                 if(contacts.length!==1) section.open=true;
             }
             include.onchange=()=>{
                 if(include.checked) confirmed.included.add(job.id);
                 else confirmed.included.delete(job.id);
                 if(recipient) recipient.disabled=!include.checked;
+                updateSendLabel();
             };
         }
         if(!sample) section.append(button("Open attached CV",guard(()=>api.openCv({job:job.id})),null,"brief"));
+        if(suggested) {
+            const wrapper=node("div",undefined,"suggested-item");
+            const include=section.querySelector('input[type="checkbox"]')?.parentElement;
+            if(include) wrapper.append(include);
+            wrapper.append(section);
+            return wrapper;
+        }
         return section;
     }));
     if(!jobs.length) $("batch-review").append(button("Show email-ready jobs",()=>{
@@ -481,6 +511,12 @@ $("show-more").onclick=()=>{state.limit+=35;render(true);};
 $("select-all").onchange=()=>{const value=$("select-all").checked; for(const job of visibleRows) check(job,value);render(true);};
 $("save-selected").onclick=guard(()=>save([...state.checked]));
 $("batch").onclick=guard(()=>reviewBatch([...state.checked]));
+$("email-batch").onclick=guard(async()=>{
+    const ids=state.rows.filter(job=>job.batch_recipient).map(job=>job.id);
+    $("email-batch").disabled=true;
+    try {await reviewBatch(ids,null,true,true,true);}
+    finally {updateStats();}
+});
 $("suggested").onclick=guard(async()=>{
     const ids=suggestedJobs().map(job=>job.id);
     $("suggested").disabled=true;
@@ -520,6 +556,30 @@ $("infinity").onclick=guard(async()=>{
     finally { startingCollection=false;updateStats(); }
 });
 $("stop").onclick=guard(()=>api.stop());
+$("gmail-open").disabled=sample;
+$("gmail-open").onclick=()=>{
+    $("gmail-address").value=gmailSender || $("sender").value;
+    $("gmail-forget").hidden=!gmailSaved;
+    $("gmail").showModal();
+};
+$("gmail").onclose=()=>$("gmail-password").value="";
+$("gmail-form").onsubmit=guard(async event=>{
+    event.preventDefault();
+    const sender=$("gmail-address").value.trim();
+    const password=$("gmail-password").value;
+    await api.saveGmail(sender,password);
+    gmailSaved=true;
+    gmailSender=sender;
+    $("gmail").close();
+    toast("Gmail saved on this PC.");
+});
+$("gmail-forget").onclick=guard(async()=>{
+    await api.forgetGmail();
+    gmailSaved=false;
+    gmailSender="";
+    $("gmail").close();
+    toast("Saved Gmail removed.");
+});
 $("profile-open").onclick=guard(async()=>{
     $("profile").showModal();
     const list=$("profile-cvs");
@@ -577,7 +637,7 @@ $("email-only").onclick=()=>{
     clearFilters();
     if(!active) {
         $("status").value="email";
-        state.active=state.rows.find(eligible)?.id || state.rows.find(hasEmail)?.id;
+        state.active=state.rows.find(job=>sample ? eligible(job) : job.batch_recipient)?.id;
         state.tab="draft";
     }
     render();
@@ -595,7 +655,7 @@ $("send-form").onsubmit=guard(async event=>{
     try {
         const manual=confirmed.manualId ? {[confirmed.manualId]:$("manual-recipient").value.trim()} :
             Object.fromEntries(ids.filter(id=>id in confirmed.recipients).map(id=>[id,confirmed.recipients[id]]));
-        await api.send(ids,confirmed.revision,confirmed.choices,password,$("sender").value.trim(),manual,confirmed.versions);
+        await api.send(ids,confirmed.revision,confirmed.choices,password,$("sender").value.trim(),manual,confirmed.versions,confirmed.localBatch);
         for(const id of ids) state.checked.delete(id);
         $("confirm").close();render();
     } finally {$("send-confirm").disabled=false;}
@@ -654,6 +714,8 @@ if (!sample) {
         },
         stop:()=>request("/api/stop",{}),
         profile:()=>request("/api/profile",{}),
+        saveGmail:(sender,password)=>request("/api/gmail/save",{sender,password}),
+        forgetGmail:()=>request("/api/gmail/forget",{}),
         templateExamples:()=>request("/api/templates"),
         cvs:()=>request("/api/cvs"),
         openCv:async query=>{
@@ -678,7 +740,7 @@ if (!sample) {
             return result;
         },
         markApplied:id=>request("/api/mark-applied",{id}),
-        send:(ids,revision,choices,password,sender,manual,versions)=>request("/api/send",{ids,revision,choices,password,sender,manual,versions})
+        send:(ids,revision,choices,password,sender,manual,versions,local_batch)=>request("/api/send",{ids,revision,choices,password,sender,manual,versions,local_batch})
     });
     $("automatic").onchange=guard(()=>api.automatic($("automatic").checked));
     async function watch() {
@@ -686,6 +748,8 @@ if (!sample) {
             const result=await request("/api/state?revision="+state.revision);
             const previousMode=state.mode;
             state.mode=result.mode;
+            gmailSaved=Boolean(result.gmail_saved);
+            gmailSender=result.sender || "";
             generalTemplate=Boolean(result.general_template);
             infinity=result.infinity;
             delivering=result.delivery_active;

@@ -5,7 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from job_decisions import assess
+from job_decisions import assess, batch_recipient
 from review_app import send_batch
 from send_applications import Listing, canonical_url, draft, evaluate, parse_listing, vacancy_key
 
@@ -37,6 +37,21 @@ class ReviewTests(unittest.TestCase):
             Hakuohjeet: Lähetä hakemus osoitteeseen jobs@employer.fi
         """)
         self.assertEqual(evaluate(job, {})[0], "review")
+
+    def test_bulk_email_uses_confirmed_local_worksite_and_ranks_contacts(self):
+        job = replace(self.job, description=(
+            "Location: Vantaa\nJob description\nRecruiter: hiring@example.org\n"
+            "Send your application to applications@example.org\nPrivacy: privacy@example.org"
+        ))
+        self.assertEqual(batch_recipient(job, "portal"), "applications@example.org")
+        for city in ("Rovaniemi", "Rauma", "Helsinki, Rauma"):
+            outside = replace(job, description=job.description.replace("Vantaa", city))
+            self.assertIsNone(batch_recipient(outside, "portal", "applications@example.org"))
+        unconfirmed = replace(job, description="Recruiter: hiring@example.org")
+        self.assertIsNone(batch_recipient(unconfirmed, "portal"))
+        no_email = replace(job, description="Location: Espoo\nJob description\nPacking orders.",
+                           application="Apply online")
+        self.assertIsNone(batch_recipient(no_email, "portal"))
 
     def test_recommends_clear_local_email_match(self):
         self.assertEqual(assess(self.job, {}, "draft", "", True)["fit"], "ready")

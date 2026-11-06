@@ -19,7 +19,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from job_sources import SOURCES, discover
-from job_decisions import assess
+from job_decisions import assess, batch_recipient
+import gmail_credentials
 from review_app import CACHE, send_batch
 from send_applications import (
     published_contacts, publication_timestamp,
@@ -65,6 +66,8 @@ class Dashboard:
             db.execute("CREATE TABLE IF NOT EXISTS jobflow_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
             preferences = dict(db.execute("SELECT key, value FROM jobflow_settings"))
             self.automatic = preferences.get("automatic", "0") == "1"
+            self.gmail_sender = preferences.get("gmail_sender", "")
+            self.gmail_saved = bool(gmail_credentials.get_password(self.gmail_sender))
             self.last_collection = float(preferences.get("last_collection", "0"))
             self.saved = {key for (key,) in db.execute("SELECT id FROM saved_jobs")}
             self.completed = {key for (key,) in db.execute(
@@ -188,6 +191,7 @@ class Dashboard:
         payload = json.dumps([asdict(job), self.profile], sort_keys=True, ensure_ascii=False)
         row["version"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         row["assessment"] = assess(job, self.profile, decision, reason, english)
+        row["batch_recipient"] = batch_recipient(job, decision, recipient)
         row["deadline_days"] = (deadline - date.today()).days if deadline else None
         if decision == "portal":
             for line in job.application.splitlines():
@@ -361,6 +365,24 @@ class Dashboard:
                 self.add(job, db)
         self.report("Profile reloaded. Review your drafts again.")
 
+    def save_gmail(self, data):
+        sender = str(data.get("sender") or "").strip().casefold()
+        password = "".join(str(data.get("password") or "").split())
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", sender) or not password:
+            raise ValueError("Enter your Gmail address and Google app password.")
+        old_sender = self.gmail_sender
+        gmail_credentials.save_password(sender, password)
+        self.set_preference("gmail_sender", sender)
+        self.gmail_sender, self.gmail_saved = sender, True
+        if old_sender and old_sender != sender:
+            gmail_credentials.remove_password(old_sender)
+
+    def forget_gmail(self):
+        if self.gmail_sender:
+            gmail_credentials.remove_password(self.gmail_sender)
+        self.set_preference("gmail_sender", "")
+        self.gmail_sender, self.gmail_saved = "", False
+
     def send(self, data):
         ids = data.get("ids")
         versions = data.get("versions")
@@ -372,10 +394,11 @@ class Dashboard:
             raise ValueError("An email batch is already being sent.")
         if not isinstance(ids, list) or not ids or len(ids) != len(set(ids)):
             raise ValueError("Select one or more unique drafts.")
-        password = os.environ.get("JOBBOT_SMTP_PASSWORD") or data.get("password")
+        sender = str(data.get("sender") or self.gmail_sender or self.profile.get("sender") or "").strip()
+        saved_password = gmail_credentials.get_password(self.gmail_sender) if sender.casefold() == self.gmail_sender else None
+        password = data.get("password") or saved_password or os.environ.get("JOBBOT_SMTP_PASSWORD")
         if not password:
-            raise ValueError("Enter your Gmail app password.")
-        sender = str(data.get("sender") or self.profile.get("sender") or "").strip()
+            raise ValueError("Set up Gmail or enter your Gmail app password for this batch.")
         if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", sender):
             raise ValueError("Enter the Gmail address that owns the app password.")
         profile = {**self.profile, "sender": sender}
@@ -385,15 +408,22 @@ class Dashboard:
         if not isinstance(manual, dict) or set(manual) - set(ids):
             raise ValueError("Invalid manually entered recipients.")
         manual_urls = set()
+        local_batch = data.get("local_batch") is True
         for key in ids:
             row = self.rows.get(key, {})
             if versions is not None and versions.get(key) != row.get("version"):
                 raise ValueError("A selected listing or your profile changed. Review it again.")
-            if not row or (key not in manual and row.get("status") != "draft"):
+            if not row or (not local_batch and key not in manual and row.get("status") != "draft"):
                 raise ValueError("One of the selected jobs is no longer available for this email.")
             job = self.jobs[key]
             recipient = row.get("recipient")
-            if key in manual:
+            if local_batch:
+                recipient = batch_recipient(job, row["status"], recipient)
+                if not recipient:
+                    raise ValueError("A selected job has no confirmed local worksite and usable email. Reopen Email-ready batch.")
+                if recipient != row.get("recipient"):
+                    manual_urls.add(job.url)
+            elif key in manual:
                 recipient = str(manual[key]).strip().casefold()
                 if recipient not in published_contacts(job):
                     raise ValueError("Choose a published address from this listing.")
@@ -487,7 +517,7 @@ def serve(sample=False):
                         "activity": dashboard.activity, "sources": list(dashboard.source_runs.values()), "added": dashboard.added, "completed": len(dashboard.completed),
                         "counts": Counter(row["status"] for row in dashboard.rows.values()),
                         "rows": list(dashboard.rows.values()) if self.path != f"/api/state?revision={revision}" else None,
-                        "templates": list(TEMPLATES), "saved": sorted(dashboard.saved), "sender": dashboard.profile.get("sender", ""), "automatic": dashboard.automatic,
+                        "templates": list(TEMPLATES), "saved": sorted(dashboard.saved), "sender": dashboard.gmail_sender or dashboard.profile.get("sender", ""), "gmail_saved": dashboard.gmail_saved, "automatic": dashboard.automatic,
                     })
                 if path == "/api/cvs":
                     paths = {"default": cv_path(dashboard.profile)}
@@ -554,6 +584,10 @@ def serve(sample=False):
                         dashboard.bookmark(data.get("ids"), data.get("saved"))
                     elif self.path == "/api/reload":
                         dashboard.reload()
+                    elif self.path == "/api/gmail/save" and not sample:
+                        dashboard.save_gmail(data)
+                    elif self.path == "/api/gmail/forget" and not sample:
+                        dashboard.forget_gmail()
                     elif self.path == "/api/profile":
                         path = DIRECTORY / "profile.json"
                         if not path.exists():

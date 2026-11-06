@@ -1,2 +1,3 @@
 playwright
 tzdata; platform_system == "Windows"
+keyring; platform_system == "Windows"

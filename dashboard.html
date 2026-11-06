@@ -17,6 +17,7 @@
     <button data-view="saved"><span data-icon="bookmark"></span>Saved Jobs</button>
     <button data-view="applications"><span data-icon="layers"></span>Applications <b id="application-count">0</b></button>
     <button id="profile-open"><span data-icon="user"></span>My Profile</button>
+    <button id="gmail-open" type="button"><span data-icon="mail"></span>Gmail Setup</button>
     <button id="templates-open"><span data-icon="mail"></span>Email Templates</button>
     <button id="suggested" type="button"><span data-icon="brief"></span>Ready to apply <b id="suggested-count">0</b></button><button id="desperate" type="button"><span data-icon="send"></span>Desperate Mode</button><button id="settings-open"><span data-icon="settings"></span>Settings</button>
   </nav>
@@ -37,7 +38,7 @@
     <label>Location<select id="location"><option value="">Helsinki, Espoo, Vantaa</option><option>Helsinki</option><option>Espoo</option><option>Vantaa</option><option value="unknown">Unconfirmed worksite</option></select></label>
     <label>Language<select id="language"><option value="priority">English priority + Finnish</option><option value="english">English confirmed</option><option value="any">All languages</option></select></label>
     <label>Job Category<select id="category"><option value="">All blue-collar</option></select></label>
-    <button id="email-only" type="button" aria-pressed="false">Email-ready</button><label><input id="last24" type="checkbox"> Last 24 hours</label><button id="clear-filters" type="button">Clear filters</button><button id="more-filters"><span data-icon="settings"></span>More Filters</button>
+    <button id="email-only" type="button" aria-pressed="false">Email-ready</button><label><input id="last24" type="checkbox"> Last 24 hours</label><button id="clear-filters" type="button">Clear filters</button><button id="email-batch" type="button">Email-ready batch</button><button id="more-filters"><span data-icon="settings"></span>More Filters</button>
   </div>
   <details id="worker-status" hidden><summary id="worker-summary">Source workers</summary><ul id="source-progress"></ul></details><div class="feed-head"><strong id="found">0 jobs found</strong><div><select id="sort" aria-label="Sort jobs"><option value="relevance">Sort: Most relevant</option><option value="recent">Sort: Newest first</option><option value="title">Sort: Job title</option></select><button id="list-view" class="icon-button" aria-label="List view" data-icon="list"></button><button id="grid-view" class="icon-button" aria-label="Grid view" data-icon="grid"></button></div></div>
   <div id="jobs" class="jobs"></div>
@@ -57,7 +58,8 @@
 <p>Browse a template in English or Finnish. To use it, select an email-ready job first.</p>
 <div class="draft-controls"><select id="template-role" aria-label="Template category"></select><select id="template-language" aria-label="Template language"><option value="en">English</option><option value="fi">Finnish</option></select></div>
 <div id="template-preview" class="draft-box" aria-live="polite"></div><button id="template-use" class="primary">Use for this job</button></dialog>
-<dialog id="confirm"><form id="send-form"><div class="dialog-head"><h2>Review applications</h2><button type="button" data-close="confirm">Cancel</button></div><p id="confirm-note"></p><p id="shared-recipient" hidden></p><label id="manual-label" hidden>Published email address<select id="manual-recipient"></select></label><p id="contact-context" hidden></p><div id="batch-review"></div><label id="sender-label">Gmail address<input id="sender" type="email" autocomplete="email" placeholder="you@gmail.com"></label><label id="password-label">Gmail app password<input id="password" type="password" autocomplete="off"></label><button id="send-confirm" class="primary">Approve and send</button></form></dialog>
+<dialog id="gmail"><form id="gmail-form"><div class="dialog-head"><h2>Gmail Setup</h2><button type="button" data-close="gmail">Close</button></div><p>Save your Gmail account once. The app password is stored in Windows Credential Manager and can be removed here.</p><label>Account email<input id="gmail-address" type="email" autocomplete="email" required></label><label>Google app password<input id="gmail-password" type="password" autocomplete="off" required></label><div class="actions"><button class="primary">Save Gmail</button><button id="gmail-forget" type="button">Forget saved Gmail</button></div></form></dialog>
+<dialog id="confirm"><form id="send-form"><div class="dialog-head"><h2>Review applications</h2><button type="button" data-close="confirm">Cancel</button></div><p id="confirm-note"></p><p id="shared-recipient" hidden></p><label id="manual-label" hidden>Published email address<select id="manual-recipient"></select></label><p id="contact-context" hidden></p><div class="send-controls"><p id="saved-gmail" hidden></p><label id="sender-label">Gmail address<input id="sender" type="email" autocomplete="email" placeholder="you@gmail.com"></label><label id="password-label">Gmail app password<input id="password" type="password" autocomplete="off"></label><button id="send-confirm" class="primary">Approve and send</button></div><div id="batch-review"></div></form></dialog>
 <div id="toast" role="status" hidden></div>
 </body>
 </html>

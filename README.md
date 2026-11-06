@@ -24,6 +24,7 @@ Copy-Item profile.example.json profile.json
 - Filter by location, language, category, or published email. **Last 24 hours** shows jobs whose publication date places them in that window and switches to **Newest first**. Listings without a publication date stay in the full queue. **Saved Jobs** keeps bookmarks. A source may return no relevant ads even when the collector runs successfully.
 - Open **Draft Message** to review a role-specific draft or **Email Templates** to browse examples in English and Finnish. The draft uses the vacancy's role and advertised duties.
 - **Ready to apply** ranks suggested drafts by language fit, publication time, and deadline. It uses verified application emails and leaves uncertain qualifications for review. Check the reasons on individual listings and approve the batch yourself.
+- **Email-ready batch** uses confirmed Helsinki, Espoo, and Vantaa worksites and picks one published recruiting address per job. Review the batch together, expand individual drafts if needed, and send from the top of the review.
 - **Desperate Mode** gathers available jobs with published addresses into one review using the general template. Check recipients and uncheck jobs you want to skip before approving.
 - For a portal application, follow the employer's instructions and use **Mark as applied** once you've submitted it. Completed vacancies leave the active queue, and SQLite keeps a completion record to help prevent duplicate applications.
 
@@ -40,7 +41,7 @@ Set these values in your private `profile.json` only if they apply.
 | `available_immediately` | Opt in to the statement about starting immediately in Helsinki, Espoo, or Vantaa. |
 | `sender` | Optional Gmail sender address. You can also enter it at batch review. |
 
-For email delivery, enter the Gmail address and its Google app password in the review dialog. The app also supports the local `JOBBOT_SMTP_PASSWORD` environment variable. Keep the password, CVs, profile, database, and sent-email history outside Git. The repository includes a blank example profile.
+Use **Gmail Setup** to save your account once in Windows Credential Manager, or enter the Gmail address and app password for a single batch. Use **Forget saved Gmail** to remove the saved password. The app also supports the local `JOBBOT_SMTP_PASSWORD` environment variable. Keep the password, CVs, profile, database, and sent-email history outside Git. The repository includes a blank example profile.
 
 ## Project layout
 
